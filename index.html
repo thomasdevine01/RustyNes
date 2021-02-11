@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+<meta content="utf-8" http-equiv="encoding">
+
+<body>
+<div class='page'>
+  <span class='label'>ROM:</span>
+  <select id='roms'>
+  </select>
+  <button id='run'>Start</button>
+  <button id='step'>Step</button>
+  <div id="PC"></div>
+  <div class='screen'>
+    <canvas id='canvas' width='240' height='256'
+      style='transform: scale(4); transform-origin: top left'></canvas>
+  </div>
+  <div class='container'>
+    <div class='memory'></div>
+    <div class='registers' id='r1'></div>
+    <div class='registers' id='r2'></div>
+  </div>
+</div>
+</body>
+<script src='nes.js'></script>
