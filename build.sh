@@ -1,3 +1,3 @@
-rustc +nightly --target wasm32-unknown-unknown -O nes.rs
+wasm-pack build --target web
 
 python3 -m http.server

@@ -1,6 +1,40 @@
+import init, {build_emulator} from "/pkg/nes.js";
 let displayMemory = 0;
 let debug = 0;
-const run = async() =>{
+let key = 0;
+let emulator;
+      async function run() {
+        await init();
+        emulator = build_emulator();
+      }
+      let started = false;
+      const start = () => {
+        if (started) return;
+        started = true;
+
+        const delay = 400;
+        let last = Date.now();
+        function mainLoop() {
+          if ((Date.now() - last) > delay) {
+            emulator.tick();
+            last = Date.now();
+          }
+          requestAnimationFrame(mainLoop);
+        }
+        requestAnimationFrame(mainLoop);
+
+        function keyboardControls(event) {
+          if (event.keyCode === 87) {
+            emulator.test();
+          }
+          last = Date.now();
+        }
+        document.addEventListener('keydown', keyboardControls);
+      };
+      run().then(
+        document.getElementById("board"),addEventListener("click", start)
+      )
+/*const run = async() =>{
     const WIDTH =  256;
     const HEIGHT = 240;
     const res = await fetch('nes.wasm');
@@ -37,14 +71,21 @@ const run = async() =>{
         updateDisplay();
         //updateProgramCounter();
       };
+      const getInput = () => {
+          
+      }
+ 
+
       let PC = document.getElementById("PC");
       let i = 0;
       const runloop = () =>{
           i += 1;
           PC.innerHTML = i;
+         
           updateUI();
           window.requestAnimationFrame(runloop);
       }
       window.requestAnimationFrame(runloop);
-}
+      
+}*/
 
