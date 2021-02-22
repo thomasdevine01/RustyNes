@@ -52,6 +52,8 @@ struct Nes{
 pub struct Emulator{
     nes: Nes,
     context: CanvasRenderingContext2d,
+    pixel_width : u16,
+    pixel_height : u16,
 
 }
 
@@ -120,9 +122,25 @@ impl Emulator{
         };
         let ret = Emulator{
             nes,
-            context
+            context,
+            pixel_width : 2,
+            pixel_height: 2,
         };
         ret
+    }
+    fn render(&mut self){
+        log("rendering");
+        self.context.set_fill_style(&"0".into());
+        self.context.fill_rect(0 as f64 ,0 as f64, self.nes.display.width as f64, self.nes.display.height as f64);
+        self.put_pixel(100, 100, 0x00ff00);
+    }
+    fn put_pixel(&mut self, x:u32, y:u32, color:u32){
+        self.context.save();
+        let  s_colorstr = "#".to_string();
+        let colorstr = s_colorstr +  &format!("{:0>6X}", color);
+        self.context.set_fill_style(&colorstr.into());
+        self.context.fill_rect(x as f64, y as f64, self.pixel_width as f64, self.pixel_height as f64);
+        self.context.restore();
     }
 }
 
@@ -132,7 +150,8 @@ impl Emulator{
         log("test");
     }
     pub fn tick(&mut self){
-        log("test2");
+        self.render();
+
     }
 }
 #[wasm_bindgen]
