@@ -11,6 +11,7 @@
   <i class="fas fa-chart-area"></i>
   <link rel="icon" type="image/x-icon" href="favicon.ico">
 </head>
+
 <body>
 <div class='page'>
   <span class='label'>ROM:</span>
@@ -19,6 +20,13 @@
   <button id='run'>Start</button>
   <button id='step'>Step</button>
   <div id="PC"></div>
+  <div class='romloader'>
+    <div>
+      Select a rom file: 
+      <input type="file" id="romload">
+    </div>
+    <pre id="fileDisplayArea"></pre>
+  </div>
   <div class='screen'>
     <canvas id='canvas' width='240' height='256'
       style='transform: scale(4); transform-origin: top left'></canvas>
@@ -28,6 +36,8 @@
     <div class='registers' id='r1'></div>
     <div class='registers' id='r2'></div>
   </div>
+
 </div>
 </body>
+
 <script src='./nes.js' type="module"></script>

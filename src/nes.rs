@@ -1,9 +1,13 @@
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use std::str;
+use std::ptr;
 mod cpu;
 
+
 use crate::cpu::Cpu;
+
 
 #[derive(Debug, Clone)]
 pub struct Display{
@@ -11,7 +15,20 @@ pub struct Display{
     pub height: u16,
     pub memory: [u32; 61440]
 }
+#[derive(Debug, Clone)]
+pub struct Rom{
+    pub size : isize,
+    pub mem : Vec<u8>,
+}
 
+impl Rom{
+    pub fn new(size : isize, mem : Vec<u8>) -> Rom{
+        Rom{
+            size,
+            mem,
+        }
+    }
+}
 impl Display{
     fn new(width:u16, height:u16, memory: &[u32; 61440]) -> Display{
         Display{
@@ -38,8 +55,11 @@ struct Nes{
 pub struct Emulator{
     nes: Nes,
     context: CanvasRenderingContext2d,
+    rom: Rom,
     pixel_width : u16,
     pixel_height : u16,
+    running : bool,
+    
 
 }
 
@@ -55,6 +75,8 @@ impl Emulator{
         let context = canvas.get_context("2d").unwrap().unwrap().dyn_into::<web_sys::CanvasRenderingContext2d>().unwrap();
         let display = Display::new(240, 255, &[0x000000; 61440]);
         let cpu = Cpu::new(&[0; 4096]);
+        let mut vec = Vec::new();
+        let rom = Rom::new(0, vec);
         let nes = Nes{
             cpu : cpu,
             display: display,
@@ -63,8 +85,10 @@ impl Emulator{
         let ret = Emulator{
             nes,
             context,
+            rom,
             pixel_width : 2,
             pixel_height: 2,
+            running : false,
         };
         ret
     }
@@ -82,6 +106,7 @@ impl Emulator{
         self.context.fill_rect(x as f64, y as f64, self.pixel_width as f64, self.pixel_height as f64);
         self.context.restore();
     }
+
 }
 
 #[wasm_bindgen]
@@ -89,10 +114,20 @@ impl Emulator{
     pub fn test(&mut self){
         log("test");
     }
-    pub fn tick(&mut self){
+    pub fn tick(&mut self, started : bool){
+        if(started && (self.nes.cpu.PC as usize) < self.rom.mem.len() - 1){
+            self.nes.cpu.PC += 1;
+            let pc = self.nes.cpu.PC as usize;
+            log(&self.rom.mem[pc].to_string());     
+        }
         self.render();
 
     }
+    pub fn loadRom(&mut self, data : &[u8]){
+        self.rom.mem = data.to_vec();
+        log(&self.rom.mem.len().to_string());
+    }
+
 }
 #[wasm_bindgen]
 pub fn build_emulator() -> Emulator{
@@ -104,3 +139,5 @@ pub fn build_emulator() -> Emulator{
         .unwrap();
     Emulator::build(&canvas)
 }
+
+
