@@ -3,8 +3,12 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 use std::str;
 use std::ptr;
-mod cpu;
 
+
+
+pub mod system;
+pub mod rom;
+pub mod cpu;
 
 use crate::cpu::Cpu;
 
@@ -60,7 +64,6 @@ pub struct Emulator{
     pixel_height : u16,
     running : bool,
     
-
 }
 
 #[wasm_bindgen]
@@ -107,6 +110,7 @@ impl Emulator{
         self.context.restore();
     }
 
+
 }
 
 #[wasm_bindgen]
@@ -115,7 +119,9 @@ impl Emulator{
         log("test");
     }
     pub fn tick(&mut self, started : bool){
+        let mut loaded = false;
         if(started && (self.nes.cpu.PC as usize) < self.rom.mem.len() - 1){
+
             self.nes.cpu.PC += 1;
             let pc = self.nes.cpu.PC as usize;
             log(&self.rom.mem[pc].to_string());     
@@ -133,6 +139,7 @@ impl Emulator{
 pub fn build_emulator() -> Emulator{
     let document = web_sys::window().unwrap().document().unwrap();
     let canvas = document.get_element_by_id("canvas").unwrap();
+    
     let canvas: web_sys::HtmlCanvasElement = canvas
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .map_err(|_| ())
