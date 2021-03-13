@@ -5,13 +5,12 @@ use std::str;
 use std::ptr;
 
 
-
 pub mod system;
 pub mod rom;
 pub mod cpu;
 
 use crate::cpu::Cpu;
-
+use crate::system::System;
 
 #[derive(Debug, Clone)]
 pub struct Display{
@@ -50,6 +49,7 @@ pub struct Debug{
 #[derive(Debug, Clone)]
 struct Nes{
     cpu : Cpu,
+    system : System,
     display : Display,
 
 }
@@ -78,11 +78,13 @@ impl Emulator{
         let context = canvas.get_context("2d").unwrap().unwrap().dyn_into::<web_sys::CanvasRenderingContext2d>().unwrap();
         let display = Display::new(240, 255, &[0x000000; 61440]);
         let cpu = Cpu::new(&[0; 4096]);
+        let sys = System::default();
         let mut vec = Vec::new();
         let rom = Rom::new(0, vec);
         let nes = Nes{
             cpu : cpu,
             display: display,
+            system : sys,
             
         };
         let ret = Emulator{
@@ -120,10 +122,10 @@ impl Emulator{
     }
     pub fn tick(&mut self, started : bool){
         let mut loaded = false;
-        if(started && (self.nes.cpu.PC as usize) < self.rom.mem.len() - 1){
+        if(started && (self.nes.cpu.pc as usize) < self.rom.mem.len() - 1){
 
-            self.nes.cpu.PC += 1;
-            let pc = self.nes.cpu.PC as usize;
+            self.nes.cpu.pc += 1;
+            let pc = self.nes.cpu.pc as usize;
             log(&self.rom.mem[pc].to_string());     
         }
         self.render();
