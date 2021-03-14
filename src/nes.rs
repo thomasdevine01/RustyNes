@@ -124,7 +124,7 @@ impl Emulator{
         let mut loaded = false;
         if(started && (self.nes.cpu.pc as usize) < self.rom.mem.len() - 1){
 
-            self.nes.cpu.pc += 1;
+            self.nes.cpu.step(&mut self.nes.system);
             let pc = self.nes.cpu.pc as usize;
             log(&self.rom.mem[pc].to_string());     
         }

@@ -37,4 +37,27 @@ impl Rom{
             b_pack: [0; 0x2000],
         }
     }
+    pub fn load_bin(&mut self, read_f:impl Fn(usize) -> u8) -> bool{
+        if(read_f(0) != 0x4e) {
+            return false;
+        }
+        if(read_f(1) != 0x45) {
+            return false;
+        }
+        if(read_f(2) != 0x53) {
+            return false;
+        }
+        if(read_f(3) != 0x1a) {
+            return false;
+        }
+        let p_rom_sz = usize::from(read_f(4));
+        let c_rom_sz = usize::from(read_f(5));
+        let flags6  = read_f(6);
+        let flags7  = read_f(7);
+        let flags8  = read_f(8);
+        let flags9  = read_f(9);
+        let flags10 = read_f(10);
+
+        true
+    }
 }

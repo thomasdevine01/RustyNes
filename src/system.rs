@@ -3,7 +3,6 @@ This is essentially the bus, and will become the core of the emulator, as it tra
 */
 use super::rom::*;
 #[derive(Clone, Debug)]
-
 pub struct System {
     //Memory for each component
     pub wram : [u8; 0x0800],
@@ -61,7 +60,7 @@ impl System {
     }
 
     pub fn write_u8(&mut self, addr: u16, data: u8, des : bool){
-        if(addr < 0x2000){
+        if addr < 0x2000 {
             let index = usize::from(addr) % self.wram.len();
             self.wram[index] = data;
         }else{
