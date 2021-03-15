@@ -1,24 +1,26 @@
-import init, {build_emulator} from "/pkg/nes.js";
+import init, {build_emulator} from "/pkg/nes.js"
 let displayMemory = 0;
 let ff = 0;
 let key = 0;
-let rom = 0;
+
 let emulator;
       async function run(file) {
+        const {
+          Emulator
+        } = await import("/pkg/nes.js");
         await init();
         emulator = build_emulator();
-        rom = new Uint8Array(file);
-        emulator.loadRom(rom);  
+      //  rom = new Uint8Array(file);
+        //emulator.loadRom(rom);  
       }
+      
       let started = false;
       const start = () => {
-        if (started) return;
-        started = true;  
         const delay = 400;
         let last = Date.now();
         function mainLoop() {
           if ((Date.now() - last) > delay) {
-            emulator.tick(rom != 0); //Start running when the ROM is loaded
+            emulator.tick(); //Start running when the ROM is loaded
             last = Date.now();
           }
           requestAnimationFrame(mainLoop);
@@ -42,12 +44,22 @@ fileInput.addEventListener('change', function(e){
   openFile(e);
   });
 var openFile = function(event) {
+  if(event.target.files.length == 0){
+    return;
+  }
   var input = event.target;
-
   var reader = new FileReader();
-  reader.onload = function(){
-    var dataURL = reader.result;
-    run(reader.result);
-  };
-  reader.readAsArrayBuffer(input.files[0]);
+  reader.onload = file => {
+    var arrBuff = file.target.result;
+    console.log(file.target.result)
+    const src = new Uint8Array(arrBuff);
+    console.log(src);
+    if(!emulator.loadRom(src)){
+      console.log("Rom load failed");
+      return;
+    }
+    console.log("Success");
+    started = true;
+  }
+  reader.readAsArrayBuffer(event.target.files[0]);
 };

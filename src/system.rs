@@ -1,3 +1,11 @@
+
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
 /*
 This is essentially the bus, and will become the core of the emulator, as it transmits data between each component
 */
@@ -53,6 +61,7 @@ impl System {
     pub fn read_u8(&mut self, addr: u16, des : bool) -> u8{
         if addr < 0x2000 { //This is the PPU register base address
             let index = usize::from(addr) % self.wram.len(); //Mirroring support
+            log("TESTING123");
             return self.wram[index];
         }else{
             return 0; //temporary,

@@ -1,7 +1,7 @@
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use std::str;
+use std::{io::Read, str};
 use std::ptr;
 
 
@@ -120,20 +120,22 @@ impl Emulator{
     pub fn test(&mut self){
         log("test");
     }
-    pub fn tick(&mut self, started : bool){
+    pub fn tick(&mut self){
         let mut loaded = false;
-        if(started && (self.nes.cpu.pc as usize) < self.rom.mem.len() - 1){
-
+        if(self.running){
+            log("TESDT");
             self.nes.cpu.step(&mut self.nes.system);
-            let pc = self.nes.cpu.pc as usize;
-            log(&self.rom.mem[pc].to_string());     
+            log(&self.nes.cpu.pc.to_string());    
         }
         self.render();
 
     }
-    pub fn loadRom(&mut self, data : &[u8]){
-        self.rom.mem = data.to_vec();
-        log(&self.rom.mem.len().to_string());
+    pub fn loadRom(&mut self, data : &[u8]) -> bool{
+        //self.rom.mem = data.to_vec();
+        self.nes.system.rom.load_bin(|addr: usize| data[addr]);
+        self.running = true;
+        true
+        //log(&self.rom.mem.len().to_string());
     }
 
 }

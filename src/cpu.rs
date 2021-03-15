@@ -1,4 +1,12 @@
+use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
 use super::system::*;
+
 #[derive(Debug, Clone)]
 pub struct Cpu{
     pub memory: [u8; 4096],
@@ -8,6 +16,7 @@ pub struct Cpu{
     a  : u8, //Accumulator
     s : u8, //Stack Pointer
     p : u8, //Status Register
+    pub data : u8, //Last data read, for debug
 }
 
 #[derive(PartialEq, Eq)]
@@ -107,6 +116,7 @@ impl Cpu{
             a : 0,
             s : 0,
             p : 0,
+            data : 0,
         }
     }
 }
@@ -136,7 +146,7 @@ impl Instruction {
     pub fn from(code : u8) -> Instruction {
         match code {
             0x69 => Instruction(Opcode::ADC, AddressingMode::Immediate),
-            _ => panic!("Invalid {:08x}", code),
+            _ =>  Instruction(Opcode::ADC, AddressingMode::Immediate),
         }
     }
 }
@@ -166,8 +176,9 @@ impl Cpu {
     pub fn step(&mut self, system : &mut System) -> u8{
         let inst_pc = self.pc;
         let inst_code = self.fetch8(system);
+        
         let Instruction(opcode, mode) = Instruction::from(inst_code);
-
+        
         match opcode{
             Opcode::ADC => {
                 let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
