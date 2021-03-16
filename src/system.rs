@@ -61,9 +61,11 @@ impl System {
     pub fn read_u8(&mut self, addr: u16, des : bool) -> u8{
         if addr < 0x2000 { //This is the PPU register base address
             let index = usize::from(addr) % self.wram.len(); //Mirroring support
-            log("TESTING123");
+        //    log("reading opcode:");
+         //  log(&self.wram[index].to_string());
             return self.wram[index];
         }else{
+            log("Write unhandled");
             return 0; //temporary,
         }
     }
@@ -72,6 +74,7 @@ impl System {
         if addr < 0x2000 {
             let index = usize::from(addr) % self.wram.len();
             self.wram[index] = data;
+            log("write unhandled");
         }else{
             
         }

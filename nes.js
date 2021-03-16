@@ -21,6 +21,7 @@ let emulator;
         function mainLoop() {
           if ((Date.now() - last) > delay) {
             emulator.tick(); //Start running when the ROM is loaded
+            
             last = Date.now();
           }
           requestAnimationFrame(mainLoop);

@@ -98,7 +98,7 @@ impl Emulator{
         ret
     }
     fn render(&mut self){
-        log("rendering");
+        
         self.context.set_fill_style(&"0".into());
         self.context.fill_rect(0 as f64 ,0 as f64, self.nes.display.width as f64, self.nes.display.height as f64);
         self.put_pixel(100, 100, 0x00ff00);
@@ -123,9 +123,10 @@ impl Emulator{
     pub fn tick(&mut self){
         let mut loaded = false;
         if(self.running){
-            log("TESDT");
+            
             self.nes.cpu.step(&mut self.nes.system);
-            log(&self.nes.cpu.pc.to_string());    
+
+           log(&self.nes.cpu.pc.to_string());    
         }
         self.render();
 
