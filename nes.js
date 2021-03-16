@@ -55,7 +55,7 @@ var openFile = function(event) {
     console.log(file.target.result)
     const src = new Uint8Array(arrBuff);
     console.log(src);
-    if(!emulator.loadRom(src)){
+    if(!emulator.load_rom(src)){
       console.log("Rom load failed");
       return;
     }

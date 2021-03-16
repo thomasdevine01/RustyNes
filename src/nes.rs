@@ -59,7 +59,6 @@ struct Nes{
 pub struct Emulator{
     nes: Nes,
     context: CanvasRenderingContext2d,
-    rom: Rom,
     pixel_width : u16,
     pixel_height : u16,
     running : bool,
@@ -77,10 +76,8 @@ impl Emulator{
     ) -> Emulator {
         let context = canvas.get_context("2d").unwrap().unwrap().dyn_into::<web_sys::CanvasRenderingContext2d>().unwrap();
         let display = Display::new(240, 255, &[0x000000; 61440]);
-        let cpu = Cpu::new(&[0; 4096]);
+        let cpu = Cpu::new();
         let sys = System::default();
-        let mut vec = Vec::new();
-        let rom = Rom::new(0, vec);
         let nes = Nes{
             cpu : cpu,
             display: display,
@@ -90,7 +87,6 @@ impl Emulator{
         let ret = Emulator{
             nes,
             context,
-            rom,
             pixel_width : 2,
             pixel_height: 2,
             running : false,
@@ -117,21 +113,16 @@ impl Emulator{
 
 #[wasm_bindgen]
 impl Emulator{
-    pub fn test(&mut self){
-        log("test");
-    }
     pub fn tick(&mut self){
-        let mut loaded = false;
-        if(self.running){
+        if self.running {
             
             self.nes.cpu.step(&mut self.nes.system);
-
-           log(&self.nes.cpu.pc.to_string());    
+            log(&self.nes.cpu.pc.to_string());    
         }
         self.render();
 
     }
-    pub fn loadRom(&mut self, data : &[u8]) -> bool{
+    pub fn load_rom(&mut self, data : &[u8]) -> bool{
         //self.rom.mem = data.to_vec();
         self.nes.system.rom.load_bin(|addr: usize| data[addr]);
         self.running = true;
