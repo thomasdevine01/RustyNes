@@ -534,10 +534,98 @@ impl Cpu {
         self.pc = self.pc + 1;
         data
     }
+    fn fetch16(&mut self, sys: &mut System) ->u16{
+        let lower = self.fetch8(sys);
+        let upper = self.fetch8(sys);
+        let data = u16::from(lower) | (u16::from(upper) << 8);
+        data
+    }
     fn fetch_operand(&mut self, system:  &mut System, mode: AddressingMode) ->Operand{
         match mode{
             
             AddressingMode::Implied => Operand(0, 0),
+            AddressingMode::Accumulator => Operand(0, 1),
+            AddressingMode::Immediate => Operand(u16::from(self.fetch8(system)), 1),
+            AddressingMode::Absolute => Operand(self.fetch16(system), 3),
+            AddressingMode::ZeroPage => Operand(u16::from(self.fetch8(system)),2),
+            AddressingMode::ZeroPageX => Operand(u16::from(self.fetch8(system).wrapping_add(self.x)), 3),
+            AddressingMode::ZeroPageY => Operand(u16::from(self.fetch8(system).wrapping_add(self.y)), 3),
+            AddressingMode::AbsoluteX => {
+                let data = self.fetch16(system).wrapping_add(u16::from(self.x));
+                let add_cyc = if(data & 0xff00u16) != (data.wrapping_add(u16::from(self.x)) & 0xff00u16) {
+                    1
+                } else{
+                    0
+                };
+                Operand(data, 3 + add_cyc)
+            },
+            AddressingMode::AbsoluteY => {
+                let data = self.fetch16(system).wrapping_add(u16::from(self.y));
+                let add_cyc = if(data & 0xff00u16) != (data.wrapping_add(u16::from(self.y)) & 0xff00u16) {
+                    1
+                } else{
+                    0
+                };
+                Operand(data, 3 + add_cyc)
+            },
+
+            AddressingMode::Relative => {
+                let src_addr = self.fetch8(system);
+                let signed_d = ((src_addr as i8) as i32) + (self.pc as i32);
+                let data = signed_d as u16;
+                let add_cyc = if(data & 0xff00u16) != (self.pc & 0xff00u16){
+                    1
+                }else{
+                    0
+                };
+                Operand(data, 1 + add_cyc)
+            },
+
+            AddressingMode::Indirect => {
+                let src_addr_lower = self.fetch8(system);
+                let src_addr_upper = self.fetch8(system);
+
+                let dst_addr_lower = u16::from(src_addr_lower) | (u16::from(src_addr_upper) << 8);
+                let dst_addr_upper = u16::from(src_addr_lower.wrapping_add(1)) | (u16::from(src_addr_upper) << 8);
+                let dst_data_lower = u16::from(system.read_u8(dst_addr_lower, false));
+                let dst_data_upper = u16::from(system.read_u8(dst_addr_upper, false));
+
+                let data = dst_data_lower | (dst_data_upper << 8);
+
+                Operand(data, 5)
+            },
+
+            AddressingMode::IndirectX => {
+                let src_addr = self.fetch8(system);
+                let dst_addr = src_addr.wrapping_add(self.x);
+
+                let data_lower = u16::from(system.read_u8(u16::from(dst_addr), false));
+                let data_upper = u16::from(system.read_u8(u16::from(dst_addr.wrapping_add(1)), false));
+
+                let data = data_lower | (data_upper << 8);
+
+                Operand(data, 5)
+                
+            }
+            AddressingMode::IndirectY => {
+                let src_addr = self.fetch8(system);
+
+                let data_lower = u16::from(system.read_u8(u16::from(src_addr), false));
+                let data_upper =
+                    u16::from(system.read_u8(u16::from(src_addr.wrapping_add(1)), false));
+
+                let base_data = data_lower | (data_upper << 8);
+                let data = base_data.wrapping_add(u16::from(self.y));
+                let additional_cyc = if (base_data & 0xff00u16) != (data & 0xff00u16) {
+                    1
+                } else {
+                    0
+                };
+
+                Operand(data, 4 + additional_cyc)
+                
+            }
+
             _ => {
                 //log("unmatched operand: ");
                 Operand(0,0)}
@@ -547,7 +635,16 @@ impl Cpu {
     fn fetch_args(&mut self, system: &mut System, mode: AddressingMode) ->(Operand, u8){
         match mode{
             AddressingMode::Implied =>(self.fetch_operand(system, mode), 0),
-            _ => (self.fetch_operand(system, mode), 0)
+            AddressingMode::Accumulator => (self.fetch_operand(system, mode), self.a),
+            AddressingMode::Immediate => {
+                let Operand(data, cyc) = self.fetch_operand(system, mode);
+                (Operand(data, cyc), data as u8)
+            }
+            _ => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                let data = system.read_u8(addr, false);
+                (Operand(addr, cyc), data)
+            }
         }
     
     }
@@ -561,8 +658,20 @@ impl Cpu {
             Opcode::ADC => {
                 log("ADC");
                 let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
-                let t = u16::from(self.a) + u16::from(arg) + (if self.read_carry_flag() { 1 } else { 0 });
-                let result = (t & 0xff) as u8;
+
+                let tmp = u16::from(self.a) + u16::from(arg) + (if self.read_carry_flag() { 1 } else { 0 } );
+                let result = (tmp & 0xff) as u8;
+
+                let carry_flag    = tmp > 0x00ffu16;
+                let zero_flag     = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                let overflow_flag = ((self.a ^ result) & (arg ^ result) & 0x80) == 0x80;
+
+                self.write_carry_flag(carry_flag);
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                self.write_overflow_flag(overflow_flag);
+                self.a = result;
                 1 + cyc
             },
             Opcode::SBC => {
