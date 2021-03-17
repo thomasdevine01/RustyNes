@@ -492,6 +492,10 @@ impl Cpu {
         system.write_u8(self.s, data, false);
         self.s = self.s - 1;
     }
+    pub fn stack_pop(&mut self, system: &mut System) -> u8 {
+        self.s = self.s + 1;
+        system.read_u8(self.s, false)
+    }
     pub fn interrupt(&mut self, system: &mut System, irq : Interrupt){
         let is_nested = self.read_interrupt_flag();
 
@@ -911,7 +915,7 @@ impl Cpu {
                 1 + cyc
             },
             Opcode::SEC => {
-                self.write_carry_flag(true)
+                self.write_carry_flag(true);
                 2
             },
             Opcode::SED => {
@@ -937,8 +941,168 @@ impl Cpu {
             Opcode::CLV => {
                 self.write_overflow_flag(false);
                 2
-            }
+            },
+            Opcode::CMP => {
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
 
+                let (result, _) = self.a.overflowing_sub(arg);
+                let zero_flag = result == 0;
+                let carry_flag = self.a >= arg;
+                let negative_flag = (result & 0x80) == 0x80;
+
+                self.write_carry_flag(carry_flag);
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                1 + cyc
+            },
+            Opcode::CPX => {
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+
+                let (result, _) = self.x.overflowing_sub(arg);
+                let zero_flag = result == 0;
+                let carry_flag = self.x >= arg;
+                let negative_flag = (result & 0x80) == 0x80;
+
+                self.write_carry_flag(carry_flag);
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                1 + cyc
+            },
+            Opcode::CPY => {
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+
+                let (result, _) = self.y.overflowing_sub(arg);
+                let zero_flag = result == 0;
+                let carry_flag = self.y >= arg;
+                let negative_flag = (result & 0x80) == 0x80;
+
+                self.write_carry_flag(carry_flag);
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                1 + cyc
+            },
+            Opcode::JMP => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                self.pc = addr;
+                cyc
+            },
+            Opcode::JSR => {
+                let Operand(addr, _) = self.fetch_operand(system, mode);
+
+                let opcode_addr = inst_pc;
+
+                let ret_addr = opcode_addr + 2;
+                self.stack_push(system, (ret_addr >> 8) as u8);
+                self.stack_push(system, (ret_addr & 0xff) as u8);
+                self.pc = addr;
+                6
+            },
+            Opcode::RTI => {
+                self.p = self.stack_pop(system);
+
+                let pc_lower = self.stack_pop(system);
+                let pc_upper = self.stack_pop(system);
+
+                self.pc = ((pc_upper as u16) << 8) | (pc_lower as u16);
+                6
+            },
+            Opcode::RTS =>{
+                let pc_lower = self.stack_pop(system);
+                let pc_upper = self.stack_pop(system);
+                self.pc = (((pc_upper as u16) << 8) | (pc_lower as u16)) + 1;
+                6
+            },
+            Opcode::BCC => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if !self.read_carry_flag(){
+                    self.pc = addr;
+                    2 + cyc
+                }else{
+                    1 + cyc
+                }
+            },
+            Opcode::BCS => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if self.read_carry_flag() {
+                    self.pc = addr;
+                    2 + cyc
+                } else {
+                    1 + cyc
+                }
+            },
+            Opcode::BEQ => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if self.read_zero_flag() {
+                    self.pc = addr;
+                    2 + cyc
+                } else {
+                    cyc + 1
+                }
+            },
+            Opcode::BNE => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if !self.read_zero_flag() {
+                    self.pc = addr;
+                    2 + cyc
+                } else {
+                    1 + cyc
+                }
+            },
+            Opcode::BMI => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if self.read_negative_flag() {
+                    self.pc = addr;
+                    2 + cyc 
+                }else{
+                    1 + cyc
+                }
+            },
+            Opcode::BPL => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if !self.read_negative_flag() {
+                    self.pc = addr;
+                    2 + cyc 
+                }else{
+                    1 + cyc
+                }
+            },
+            Opcode::BVC => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if !self.read_overflow_flag() {
+                    self.pc = addr;
+                    2 + cyc 
+                }else{
+                    1 + cyc
+                }
+            },
+            Opcode::BVS => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if self.read_overflow_flag() {
+                    self.pc = addr;
+                    2 + cyc 
+                }else{
+                    1 + cyc
+                }
+            },
+            Opcode::PHA => {
+                self.stack_push(system, self.a);
+                3
+            },
+            Opcode::PLA => {
+                let result = self.stack_pop(system);
+
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                self.a = result;
+                4
+            },
+            Opcode::PLP => {
+                self.p = self.stack_pop(system);
+                4
+            }
 
             Opcode::JMP =>{
                 log("JMP");
