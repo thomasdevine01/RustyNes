@@ -399,16 +399,47 @@ impl Instruction {
 }
 
 impl Cpu {
-    fn read_carry_flag(&self) -> bool{
-        (self.p & 0x01u8) == 0x01u8
+
+    pub fn write_negative_flag(&mut self, active:bool){
+        if active{
+            self.p = self.p | 0x80u8;
+        }else{
+            self.p = self.p & (!0x80u8);
+        }
     }
+
+    pub fn write_overflow_flag(&mut self, active:bool){
+        if active{
+            self.p = self.p | 0x40u8;
+        }else{
+            self.p = self.p & (!0x40u8);
+        }
+    }
+
     pub fn write_break_flag(&mut self, active:bool){
         if active{
-        self.p = self.p | 0x10u8;
+            self.p = self.p | 0x10u8;
         }else{
             self.p = self.p & (!0x10u8);
         }
     }
+
+    pub fn write_reserved_flag(&mut self, active:bool){
+        if active{
+            self.p = self.p | 0x20u8;
+        }else{
+            self.p = self.p & (!0x20u8);
+        }
+    }
+
+    pub fn write_decimal_flag(&mut self, active:bool){
+        if active{
+            self.p = self.p | 0x08u8;
+        }else{
+            self.p = self.p & (!0x08u8);
+        }
+    }
+
     pub fn write_interrupt_flag(&mut self, active:bool){
         if active{
             self.p = self.p | 0x04u8;
@@ -416,12 +447,49 @@ impl Cpu {
             self.p = self.p & (!0x04u8);
         }
     }
+    
+    pub fn write_zero_flag(&mut self, active:bool){
+        if active{
+            self.p = self.p | 0x02u8;
+        }else{
+            self.p = self.p & (!0x02u8);
+        }
+    }
+
+    pub fn write_carry_flag(&mut self, active:bool){
+        if active{
+            self.p = self.p | 0x01u8;
+        }else{
+            self.p = self.p & (!0x01u8);
+        }
+    }
+    pub fn read_negative_flag(&self) -> bool {
+        (self.p & 0x80u8) == 0x80u8
+    }
+    pub fn read_overflow_flag(&self) -> bool {
+        (self.p & 0x40u8) == 0x40u8
+    }
+    pub fn read_reserved_flag(&self) -> bool {
+        (self.p & 0x20u8) == 0x20u8
+    }
+    pub fn read_break_flag(&self) -> bool {
+        (self.p & 0x10u8) == 0x10u8
+    }
+    pub fn read_decimal_flag(&self) -> bool {
+        (self.p & 0x08u8) == 0x08u8
+    }
+    pub fn read_zero_flag(&self) -> bool {
+        (self.p & 0x02u8) == 0x02u8
+    }
+    pub fn read_carry_flag(&self) -> bool{
+        (self.p & 0x01u8) == 0x01u8
+    }
     pub fn read_interrupt_flag(&self)->bool{
         (self.p & 0x4u8) == 0x04u8
     }
+
     pub fn stack_push(&mut self, system: &mut System, data: u8){
         system.write_u8(self.s, data, false);
-        log("Writing datas");
         self.s = self.s - 1;
     }
     pub fn interrupt(&mut self, system: &mut System, irq : Interrupt){
@@ -497,6 +565,48 @@ impl Cpu {
                 let result = (t & 0xff) as u8;
                 1 + cyc
             },
+            Opcode::SBC => {
+                log("SBC");
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+                let (data, carry1) = self.a.overflowing_sub(arg);
+                let (result, carry2) = data.overflowing_sub(if self.read_carry_flag() {0} else {1});
+
+                let carry_flag = !(carry1 || carry2);
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                let overflow_flag = (((self.a ^ arg) & 0x80) == 0x80) && (((self.a ^ result) & 0x80) == 0x80);
+                self.write_carry_flag(carry_flag);
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                self.write_overflow_flag(overflow_flag);
+                self.a = result;
+                1 + cyc
+            },
+            Opcode::AND => {
+                log("AND");
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+
+                let result = self.a & arg;
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                self.a = result;
+                1 + cyc
+            },
+            Opcode::EOR => {
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+
+                let result = self.a ^ arg;
+
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+
+                1 + cyc
+            }
             Opcode::JMP =>{
                 log("JMP");
                 69
