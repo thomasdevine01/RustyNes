@@ -715,7 +715,231 @@ impl Cpu {
                 self.write_negative_flag(negative_flag);
 
                 1 + cyc
+            },
+            Opcode::ORA => {
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+
+                let result = self.a | arg;
+
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+
+                self.a = result;
+                1 + cyc
+            },
+            Opcode::ASL =>{
+                let (Operand(addr,cyc), arg) = self.fetch_args(system, mode);
+
+                let result = arg.wrapping_shl(1);
+
+                let carry_flag = (arg & 0x80) == 0x80;
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                self.write_carry_flag(carry_flag);
+                if mode == AddressingMode::Accumulator{
+                    self.a = result;
+                    1 + cyc
+                }else{
+                    system.write_u8(addr, result, false);
+                    3 + cyc
+                }
+            },
+            Opcode::LSR => {
+                let (Operand(addr,cyc), arg) = self.fetch_args(system, mode);
+
+                let result = arg.wrapping_shr(1);
+
+                let carry_flag = (arg & 0x01) == 0x01;
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                self.write_carry_flag(carry_flag);
+                if mode == AddressingMode::Accumulator {
+                    self.a = result;
+                    1 + cyc
+                } else{
+                    system.write_u8(addr, result, false);
+                    3 + cyc
+                }
+            },
+            Opcode::ROL => {
+                let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
+
+                let result = arg.wrapping_shl(1) | (if self.read_carry_flag() { 0x01} else {0x00});
+                let carry_flag = (arg & 0x80) == 0x80;
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                self.write_carry_flag(carry_flag);
+
+                if mode == AddressingMode::Accumulator {
+                    self.a = result;
+                    1 + cyc
+                } else{
+                    system.write_u8(addr, result, false);
+                    3 + cyc
+                }
+
+            },
+            Opcode::ROR => {
+                let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
+
+                let result = arg.wrapping_shr(1) | (if self.read_carry_flag() { 0x80} else {0x00});
+                let carry_flag = (arg & 0x01) == 0x01;
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                self.write_carry_flag(carry_flag);
+
+                if mode == AddressingMode::Accumulator {
+                    self.a = result;
+                    1 + cyc
+                } else{
+                    system.write_u8(addr, result, false);
+                    3 + cyc
+                }
+            },
+            Opcode::INC => {
+                let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
+
+                let result = arg.wrapping_add(1);
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                system.write_u8(addr, result, false);
+                3 + cyc
+            },
+            Opcode::INX => {
+                let result = self.x.wrapping_add(1);
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                self.x = result;
+                2
+            },
+            Opcode::INY => {
+                let result = self.y.wrapping_add(1);
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                self.y = result;
+                2
+            },
+            Opcode::DEC => {
+                let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
+                let result = self.x.wrapping_sub(1);
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                system.write_u8(addr, result, false);
+                3 + cyc
+            },
+            Opcode::DEX => {
+                let result = self.x.wrapping_sub(1);
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                self.x = result;
+                2
+            },
+            Opcode::DEY => {
+                let result = self.y.wrapping_sub(1);
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                self.y = result;
+                2
+            },
+            Opcode::LDA => {
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+                let zero_flag = arg == 0;
+                let negative_flag = (arg & 0x80) == 0x80;
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                self.a = arg;
+                1 + cyc
+            },
+            Opcode::LDX => {
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+                let zero_flag = arg == 0;
+                let negative_flag = (arg & 0x80) == 0x80;
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                self.x = arg;
+                1 + cyc
+                
+            },
+            Opcode::LDY =>{
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+                let zero_flag = arg == 0;
+                let negative_flag = (arg & 0x80) == 0x80;
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                self.y = arg;
+                1 + cyc
+            },
+            Opcode::STA => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+
+                system.write_u8(addr,self.a, false);
+                1 + cyc
+            },
+            Opcode::STX => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+
+                system.write_u8(addr,self.x, false);
+                1 + cyc
+            },
+            Opcode::STY => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+
+                system.write_u8(addr,self.y, false);
+                1 + cyc
+            },
+            Opcode::SEC => {
+                self.write_carry_flag(true)
+                2
+            },
+            Opcode::SED => {
+                self.write_decimal_flag(true);
+                2
+            },
+            Opcode::SEI => {
+                self.write_interrupt_flag(true);
+                2
+            },
+            Opcode::CLC => {
+                self.write_carry_flag(false);
+                2
+            },
+            Opcode::CLD => {
+                self.write_decimal_flag(false);
+                2
+            },
+            Opcode::CLI => {
+                self.write_interrupt_flag(false);
+                2
+            },
+            Opcode::CLV => {
+                self.write_overflow_flag(false);
+                2
             }
+
+
             Opcode::JMP =>{
                 log("JMP");
                 69
