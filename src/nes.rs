@@ -8,7 +8,7 @@ use std::ptr;
 pub mod system;
 pub mod rom;
 pub mod cpu;
-
+pub mod instruction;
 use crate::cpu::Cpu;
 use crate::system::System;
 
