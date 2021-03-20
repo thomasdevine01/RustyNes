@@ -500,6 +500,23 @@ impl Cpu {
         let is_nested = self.read_interrupt_flag();
 
         match irq{
+            Interrupt::NMI =>{
+            self.write_break_flag(false);
+            self.stack_push(system, (self.pc >> 8) as u8);
+            self.stack_push(system, (self.pc & 0xff) as u8);
+            self.stack_push(system, self.p);
+            self.write_interrupt_flag(true);
+            },
+            Interrupt::RESET => {
+                self.write_interrupt_flag(true)
+            },
+            Interrupt::IRQ => {
+                self.write_break_flag(false);
+                self.stack_push(system, (self.pc >> 8) as u8);
+                self.stack_push(system, (self.pc & 0xff) as u8);
+                self.stack_push(system, self.p);
+                self.write_interrupt_flag(true)
+            },
             Interrupt::BRK =>{
                 self.write_break_flag(true);
                 self.pc = self.pc + 1;
@@ -1088,6 +1105,10 @@ impl Cpu {
                 self.stack_push(system, self.a);
                 3
             },
+            Opcode::PHP => {
+                self.stack_push(system, self.p);
+                3
+            },
             Opcode::PLA => {
                 let result = self.stack_pop(system);
 
@@ -1102,17 +1123,82 @@ impl Cpu {
             Opcode::PLP => {
                 self.p = self.stack_pop(system);
                 4
-            }
-
-            Opcode::JMP =>{
-                log("JMP");
-                69
             },
+            Opcode::TAX => {
+                let zero_flag = self.a == 0;
+                let negative_flag = (self.a & 0x80) == 0x80;
+
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+
+                self.x = self.a;
+                2
+            },
+            Opcode::TAY => {
+                let zero_flag = self.a == 0;
+                let negative_flag = (self.a & 0x80) == 0x80;
+
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+
+                self.y = self.a;
+                2
+            },
+            Opcode::TSX => {
+                let result = (self.s & 0xff) as u8;
+
+                let zero_flag = result == 0;
+                let negative_flag = (result & 0x80) == 0x80;
+
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                self.x = result;
+
+                2
+            },
+            Opcode::TXA => {
+                let zero_flag = self.y == 0;
+                let negative_flag = (self.y & 0x80) == 0x80;
+
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                self.a = self.y;
+                2
+            },
+            Opcode::TXS =>{
+                self.s = (self.x as u16) | 0x0100u16;
+                2
+            },
+            Opcode::TYA =>{
+                let zero_flag = self.y == 0;
+                let negative_flag = (self.y & 0x80) == 0x80;
+
+                self.write_zero_flag(zero_flag);
+                self.write_negative_flag(negative_flag);
+                self.a = self.y;
+                2
+            }
             Opcode::BRK =>{
                 log("BRK");
                 self.write_break_flag(true);
                 self.interrupt(system, Interrupt::BRK);
                 7
+            },
+            Opcode::BIT => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                let arg = system.read_u8(addr, true);
+
+                let negative_flag = (arg & 0x80) == 0x80;
+                let overflow_flag = (arg & 0x40) == 0x40;
+                let zero_flag = (self.a & arg) == 0x00;
+
+                self.write_negative_flag(negative_flag);
+                self.write_zero_flag(zero_flag);
+                self.write_overflow_flag(overflow_flag);
+                2 + cyc
+            },
+            Opcode::NOP =>{
+                2
             },
             _ =>{
                 log("Could not match opcode");

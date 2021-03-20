@@ -61,11 +61,11 @@ impl Rom{
         }
         let p_rom_sz = usize::from(read_f(4));
         let c_rom_sz = usize::from(read_f(5));
-        let flags6  = read_f(6);
-        let flags7  = read_f(7);
-        let flags8  = read_f(8);
-        let flags9  = read_f(9);
-        let flags10 = read_f(10);
+        let flags6  = read_f(6); // Mapper 1
+        let flags7  = read_f(7); // Mapper 2
+        let flags8  = read_f(8); // Ram Size
+        let flags9  = read_f(9); // tv system 1
+        let flags10 = read_f(10); // tv system 2
         
         let is_vert_m = (flags6 & 0x01) == 0x01;
         if (is_vert_m){
