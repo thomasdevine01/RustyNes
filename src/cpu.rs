@@ -515,6 +515,42 @@ impl Cpu {
                 self.x = result;
                 2
             },
+            Opcode::BCC => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if !self.read_carry_flag(){
+                    self.pc = addr;
+                    2 + cyc
+                }else{
+                    1 + cyc
+                }
+            },
+            Opcode::BCS => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if self.read_carry_flag() {
+                    self.pc = addr;
+                    2 + cyc
+                } else {
+                    1 + cyc
+                }
+            },
+            Opcode::BEQ => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if self.read_zero_flag() {
+                    self.pc = addr;
+                    2 + cyc
+                } else {
+                    cyc + 1
+                }
+            },
+            Opcode::BNE => {
+                let Operand(addr, cyc) = self.fetch_operand(system, mode);
+                if !self.read_zero_flag() {
+                    self.pc = addr;
+                    2 + cyc
+                } else {
+                    1 + cyc
+                }
+            },
             Opcode::INY => {
                 let result = self.y.wrapping_add(1);
                 let zero_flag = result == 0;
@@ -696,42 +732,7 @@ impl Cpu {
                 self.pc = (((pc_upper as u16) << 8) | (pc_lower as u16)) + 1;
                 6
             },
-            Opcode::BCC => {
-                let Operand(addr, cyc) = self.fetch_operand(system, mode);
-                if !self.read_carry_flag(){
-                    self.pc = addr;
-                    2 + cyc
-                }else{
-                    1 + cyc
-                }
-            },
-            Opcode::BCS => {
-                let Operand(addr, cyc) = self.fetch_operand(system, mode);
-                if self.read_carry_flag() {
-                    self.pc = addr;
-                    2 + cyc
-                } else {
-                    1 + cyc
-                }
-            },
-            Opcode::BEQ => {
-                let Operand(addr, cyc) = self.fetch_operand(system, mode);
-                if self.read_zero_flag() {
-                    self.pc = addr;
-                    2 + cyc
-                } else {
-                    cyc + 1
-                }
-            },
-            Opcode::BNE => {
-                let Operand(addr, cyc) = self.fetch_operand(system, mode);
-                if !self.read_zero_flag() {
-                    self.pc = addr;
-                    2 + cyc
-                } else {
-                    1 + cyc
-                }
-            },
+            
             Opcode::BMI => {
                 let Operand(addr, cyc) = self.fetch_operand(system, mode);
                 if self.read_negative_flag() {
