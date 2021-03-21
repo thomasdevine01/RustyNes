@@ -1,5 +1,14 @@
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+
+pub const PRG_ROM_MAX_SIZE: usize = 0x8000;
+pub const CHR_ROM_MAX_SIZE: usize = 0x2000;
+pub const BATTERY_PACKED_RAM_MAX_SIZE: usize = 0x2000;
+
+pub const PRG_ROM_SYSTEM_BASE_ADDR: u16 = 0x8000;
+pub const BATTERY_PACKED_RAM_BASE_ADDR: u16 = 0x6000;
+
+pub const INES_TRAINER_DATA_SIZE: usize = 0x0200;
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
@@ -107,5 +116,33 @@ impl Rom{
         self.c_rom_bytes = chr_rom_bytes;
 
         true
+    }
+
+    pub fn read_u8(&mut self, addr: u16, _des : bool) -> u8 {
+        if addr < PRG_ROM_SYSTEM_BASE_ADDR {
+            let index = usize::from(addr - BATTERY_PACKED_RAM_BASE_ADDR);
+            self.b_pack[index]
+        } else {
+            let index = usize::from(addr - PRG_ROM_SYSTEM_BASE_ADDR);
+            if index < self.p_rom_bytes {
+                self.p_rom[index]
+            } else {
+                self.p_rom[index - self.p_rom_bytes]
+            }
+        }
+    }
+    pub fn write_u8(&mut self, addr: u16, data: u8, _des : bool)  {
+        if addr < PRG_ROM_SYSTEM_BASE_ADDR {
+            let index = usize::from(addr - BATTERY_PACKED_RAM_BASE_ADDR);
+            self.b_pack[index] = data
+        }else {
+            let index = usize::from(addr - PRG_ROM_SYSTEM_BASE_ADDR);
+
+            if index < self.p_rom_bytes {
+                self.p_rom[index] = data;
+            }else{
+                self.p_rom[index - self.p_rom_bytes] = data;
+            }
+        }
     }
 }
