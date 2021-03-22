@@ -42,6 +42,22 @@ impl Cpu{
     pub fn increment(&mut self, incr:u16){
         self.pc = self.pc + incr;
     }
+    pub fn regstat(&self, reg:u8) -> u8{
+        match reg {
+            0 => self.x,
+            1 => self.y,
+            2 => self.a,
+            _ => 254,
+        }
+    }
+    pub fn regstat16(&self, reg:u8) -> u16 {
+        match reg {
+            0 => self.pc,
+            1 => self.s,
+
+            _ => 404,
+        }
+    }
     
 }
 //Where we eventually have all of our opcodes enumerated, this will be a fairly large enum

@@ -113,6 +113,17 @@ impl Emulator{
 
 #[wasm_bindgen]
 impl Emulator{
+
+    pub fn status(&self, regn : u8)-> u16{
+        match regn {
+            0 => self.nes.cpu.regstat16(0),
+            1 => self.nes.cpu.regstat16(1),
+            2 => self.nes.cpu.regstat(0) as u16,
+            3 => self.nes.cpu.regstat(1) as u16,
+            4 => self.nes.cpu.regstat(2) as u16,
+            _ =>  403 as u16,
+        }
+    }
     pub fn tick(&mut self){
         if self.running {
             

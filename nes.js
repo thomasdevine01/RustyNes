@@ -2,7 +2,11 @@ import init, {build_emulator} from "/pkg/nes.js"
 let displayMemory = 0;
 let ff = 0;
 let key = 0;
-
+let regpc = document.getElementById("pc");
+let regsp = document.getElementById("sp");
+let regx = document.getElementById("x");
+let regy = document.getElementById("y");
+let rega = document.getElementById("a");
 let emulator;
       async function run(file) {
         const {
@@ -21,7 +25,11 @@ let emulator;
         function mainLoop() {
           if ((Date.now() - last) > delay) {
             emulator.tick(); //Start running when the ROM is loaded
-            
+            regpc.innerHTML = emulator.status(0);
+            regsp.innerHTML = emulator.status(1);
+            regx.innerHTML = emulator.status(2);
+            regy.innerHTML = emulator.status(3);
+            rega.innerHTML = emulator.status(4);
             last = Date.now();
           }
           requestAnimationFrame(mainLoop);
