@@ -7,6 +7,7 @@ let regsp = document.getElementById("sp");
 let regx = document.getElementById("x");
 let regy = document.getElementById("y");
 let rega = document.getElementById("a");
+let regr2 = document.getElementById("r2");
 let emulator;
       async function run(file) {
         const {
@@ -20,7 +21,7 @@ let emulator;
       
       let started = false;
       const start = () => {
-        const delay = 400;
+        const delay = 40;
         let last = Date.now();
         function mainLoop() {
           if ((Date.now() - last) > delay) {
@@ -30,6 +31,8 @@ let emulator;
             regx.innerHTML = emulator.status(2);
             regy.innerHTML = emulator.status(3);
             rega.innerHTML = emulator.status(4);
+            
+
             last = Date.now();
           }
           requestAnimationFrame(mainLoop);

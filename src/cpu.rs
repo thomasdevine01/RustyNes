@@ -54,10 +54,10 @@ impl Cpu{
         match reg {
             0 => self.pc,
             1 => self.s,
-
             _ => 404,
         }
     }
+ 
     
 }
 //Where we eventually have all of our opcodes enumerated, this will be a fairly large enum
@@ -331,7 +331,7 @@ impl Cpu {
             }
 
             _ => {
-                //log("unmatched operand: ");
+                log("unmatched operand: ");
                 Operand(0,0)}
                 ,
         }
@@ -355,7 +355,7 @@ impl Cpu {
     pub fn step(&mut self, system : &mut System) -> u8{
         let inst_pc = self.pc;
         let inst_code = self.fetch8(system);
-      //  log(&inst_code.to_string());
+        self.data = inst_code;
         let Instruction(opcode, mode) = Instruction::from(inst_code);
         
         match opcode{

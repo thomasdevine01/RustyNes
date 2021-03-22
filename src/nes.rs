@@ -121,7 +121,8 @@ impl Emulator{
             2 => self.nes.cpu.regstat(0) as u16,
             3 => self.nes.cpu.regstat(1) as u16,
             4 => self.nes.cpu.regstat(2) as u16,
-            _ =>  403 as u16,
+            5 => self.nes.cpu.regstat(3) as u16,
+            _ =>  222 as u16,
         }
     }
     pub fn tick(&mut self){

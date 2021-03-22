@@ -81,7 +81,6 @@ impl System{
     }
 }
 impl System {
-
     pub fn write_ppu_vblank(&mut self, is_set : bool){
         if is_set {
             self.ppu_reg[PPU_STATUS_OFFSET] = self.ppu_reg[PPU_STATUS_OFFSET] | 0x80u8;
@@ -139,12 +138,74 @@ impl System {
     }
 
     pub fn write_u8(&mut self, addr: u16, data: u8, des : bool){
+        if addr  > 0x6000 {
+            log ("WROTE FROM 6000");
+        }
         if addr < PPU_REG_BASE_ADDR {
             let index = usize::from(addr) % self.wram.len();
             self.wram[index] = data;
-            log("write unhandled");
-        }else{
-            
+        } else if addr < APU_IO_REG_BASE_ADDR {
+            let index = usize::from(addr - PPU_REG_BASE_ADDR) % self.ppu_reg.len();
+
+            match index {
+                0x04 => {
+                    if !des {
+                        self.write_oam_data = true
+                    }
+                    self.ppu_reg[index] = data;
+
+                },
+                0x05 => {
+                    if self.ppu_is_second {
+                        self.ppu_scroll_y = data;
+                        if !des {
+                            self.ppu_is_second  = false;
+                            self.write_ppu_scroll = true;
+                        }
+                    }else {
+                        self.ppu_reg[index] = data;
+                        if !des {
+                            self.ppu_is_second = true;
+                        }
+                    }
+                },
+                0x06 => {
+                    if self.ppu_is_second {
+                        self.ppu_addr_lower = data;
+                        if !des {
+                            self.ppu_is_second = false;
+                            self.write_ppu_addr = true;
+                        }
+                    } else {
+                        self.ppu_reg[index] = data;
+                        if !des{
+                            self.ppu_is_second = true
+                        }
+                    }
+                },
+                0x07 => {
+                    self.ppu_reg[index] = data;
+                    if !des {
+                        self.write_ppu_data = true;
+                    }
+                },
+                _ => {
+                    self.ppu_reg[index] = data;
+                }
+            };
+        } else if addr < ROM_BASE_ADDR {
+            let index = usize::from(addr - APU_IO_REG_BASE_ADDR);
+            if !des {
+                match index {
+                    0x14 => self.write_oam_data = true,
+                   // 0x16 => self.pad1.write_strobe((data & 0x01) == 0x01),
+                   // 0x16 => self.pad2.write_strobe((data & 0x01) == 0x01),
+                    _ => {}
+                }
+            }
+            self.io_reg[index] = data;
+        } else {
+            self.rom.write_u8(addr, data, des);
         }
     }
 }
