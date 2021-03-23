@@ -81,6 +81,24 @@ impl System{
     }
 }
 impl System {
+
+    pub fn reset(&mut self){
+        self.wram = [0; WRAM_SIZE];
+        self.ppu_reg = [0; PPU_REG_SIZE];
+        self.io_reg = [0; APU_IO_REG_SIZE];
+
+        self.write_oam_data = false;
+        self.write_ppu_scroll = false;
+        self.write_ppu_data = false;
+        self.write_ppu_addr = false;
+        self.write_oam_dma = false;
+        self.read_oam_data = false;
+        self.read_ppu_data = false;
+
+        self.ppu_is_second = false;
+        self.ppu_scroll_y = 0;
+        self.ppu_addr_lower = 0;
+    }
     pub fn write_ppu_vblank(&mut self, is_set : bool){
         if is_set {
             self.ppu_reg[PPU_STATUS_OFFSET] = self.ppu_reg[PPU_STATUS_OFFSET] | 0x80u8;

@@ -42,6 +42,14 @@ impl Cpu{
     pub fn increment(&mut self, incr:u16){
         self.pc = self.pc + incr;
     }
+    pub fn reset(&mut self){
+        self.a = 0;
+        self.x = 0;
+        self.y = 0;
+        self.pc = 0;
+        self.s = 0x01fd;
+        self.p = 0x34;
+    }
     pub fn regstat(&self, reg:u8) -> u8{
         match reg {
             0 => self.x,

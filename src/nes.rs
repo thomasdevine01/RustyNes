@@ -125,6 +125,12 @@ impl Emulator{
             _ =>  222 as u16,
         }
     }
+    pub fn reset(&mut self){
+        log("Reset");
+        self.nes.cpu.reset();
+        self.nes.system.reset();
+        self.nes.cpu.interrupt(&mut self.nes.system, cpu::Interrupt::RESET);
+    }
     pub fn tick(&mut self){
         if self.running {
             
