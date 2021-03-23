@@ -144,6 +144,7 @@ impl Emulator{
         //self.rom.mem = data.to_vec();
         self.nes.system.rom.load_bin(|addr: usize| data[addr]);
         self.running = true;
+        self.reset();
         true
         //log(&self.rom.mem.len().to_string());
     }
