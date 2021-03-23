@@ -341,7 +341,7 @@ impl Instruction {
             _ =>  {
                 log("Unimplemented opcode:");
                 log(&code.to_string());
-                Instruction(Opcode::ADC, AddressingMode::Immediate)
+                Instruction(Opcode::NOP, AddressingMode::Implied)
             },
         }
     }
