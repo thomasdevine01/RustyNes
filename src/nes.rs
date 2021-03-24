@@ -97,6 +97,7 @@ impl Emulator{
         
         self.context.set_fill_style(&"0".into());
         self.context.fill_rect(0 as f64 ,0 as f64, self.nes.display.width as f64, self.nes.display.height as f64);
+    
         self.put_pixel(100, 100, 0x00ff00);
     }
     fn put_pixel(&mut self, x:u32, y:u32, color:u32){
@@ -114,7 +115,7 @@ impl Emulator{
 #[wasm_bindgen]
 impl Emulator{
 
-    pub fn status(&self, regn : u8)-> u16{
+    pub fn status(&mut self, regn : u8)-> u16{
         match regn {
             0 => self.nes.cpu.regstat16(0),
             1 => self.nes.cpu.regstat16(1),
@@ -122,6 +123,7 @@ impl Emulator{
             3 => self.nes.cpu.regstat(1) as u16,
             4 => self.nes.cpu.regstat(2) as u16,
             5 => self.nes.cpu.regstat(3) as u16,
+            6 => self.nes.system.rom.read_u8(0x6001, false) as u16,
             _ =>  222 as u16,
         }
     }

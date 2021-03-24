@@ -7,7 +7,7 @@ let regsp = document.getElementById("sp");
 let regx = document.getElementById("x");
 let regy = document.getElementById("y");
 let rega = document.getElementById("a");
-let regr2 = document.getElementById("r2");
+let regrbat = document.getElementById("r2");
 let emulator;
       async function run(file) {
         const {
@@ -31,6 +31,7 @@ let emulator;
             regx.innerHTML = emulator.status(2);
             regy.innerHTML = emulator.status(3);
             rega.innerHTML = emulator.status(4);
+            regrbat.innerHTML = emulator.status(6);
             
 
             last = Date.now();

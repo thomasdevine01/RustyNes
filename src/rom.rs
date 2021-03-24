@@ -83,15 +83,24 @@ impl Rom{
             self.mirror_table = MirrorTable::Horizontal;
         }
         self.bat_pack = (flags6 & 0x02) == 0x02;
+        let trainer_exists = (flags6 & 0x04) == 0x04;
         let header_bytes = 16;
+        let trainer_bytes = if trainer_exists {512} else {0};
+        let trainer_base_addr = header_bytes;
 
         let p_rom_bytes = p_rom_sz * 0x4000;
         let chr_rom_bytes = c_rom_sz * 0x2000;
-        let p_rom_base = header_bytes;
-        let c_rom_base = header_bytes + p_rom_bytes;
+        let p_rom_base = header_bytes + trainer_bytes;
+        let c_rom_base = header_bytes + trainer_bytes + p_rom_bytes;
 
         self.mapper = Mapper::Nrom;
         let mut bytes_read = 0;
+        if trainer_exists {
+            for i in 0..INES_TRAINER_DATA_SIZE {
+                let ines_binary_addr = trainer_base_addr + i;
+                self.p_rom[i] = read_f(ines_binary_addr);
+            }
+        }
         //Program rom
         for i in 0..p_rom_bytes {
             let bin_addr = p_rom_base + i;
@@ -145,4 +154,5 @@ impl Rom{
             }
         }
     }
+
 }
