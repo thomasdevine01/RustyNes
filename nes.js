@@ -41,9 +41,8 @@ let emulator;
         requestAnimationFrame(mainLoop);
 
         function keyboardControls(event) {
-          if (event.keyCode === 87) {
-            emulator.test();
-          }
+          
+          emulator.test(event.keyCode);
           last = Date.now();
         }
         document.addEventListener('keydown', keyboardControls);

@@ -142,6 +142,10 @@ impl Emulator{
         self.render();
 
     }
+    pub fn test(&self, key_code: u8){
+        log("YOU PRESSED A BUTTON");
+        log(&key_code.to_string());
+    }
     pub fn load_rom(&mut self, data : &[u8]) -> bool{
         //self.rom.mem = data.to_vec();
         self.nes.system.rom.load_bin(|addr: usize| data[addr]);
