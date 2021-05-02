@@ -99,6 +99,7 @@ impl Emulator{
         self.context.fill_rect(0 as f64 ,0 as f64, self.nes.display.width as f64, self.nes.display.height as f64);
     
         self.put_pixel(100, 100, 0x00ff00);
+        self.put_pixel(102, 100, 0xff00ff);
     }
     fn put_pixel(&mut self, x:u32, y:u32, color:u32){
         self.context.save();

@@ -896,6 +896,257 @@ impl Cpu {
                 self.write_overflow_flag(overflow_flag);
                 2 + cyc
             },
+            Opcode::ALR => {
+                
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+
+                let src = self.a & arg;
+                let result = src.wrapping_shr(1);
+
+                let is_carry    = (src    & 0x01) == 0x01;
+                let is_zero     = result == 0;
+                let is_negative = (result & 0x80) == 0x80;
+
+                self.write_carry_flag(is_carry);
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+
+                self.a = result;
+                1 + cyc
+            },
+            Opcode::ANC => {
+               
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+
+                let result = self.a & arg;
+                let is_zero     = result == 0;
+                let is_negative = (result & 0x80) == 0x80;
+                let is_carry    = self.read_negative_flag();
+
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+                self.write_carry_flag(is_carry);
+                self.a = result;
+                1 + cyc
+            },
+            Opcode::ARR => {
+             
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+
+                let src = self.a & arg;
+                let result = src.wrapping_shr(1) | (if self.read_carry_flag() { 0x80 } else { 0x00 } );
+
+                let is_zero     = result == 0;
+                let is_negative = (result & 0x80) == 0x80;
+                let is_carry    = (result & 0x40) == 0x40;
+                let is_overflow = ((result & 0x40) ^ ((result & 0x20) << 1)) == 0x40;
+
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+                self.write_carry_flag(is_carry);
+                self.write_overflow_flag(is_overflow);
+
+                self.a = result;
+                1 + cyc
+            },
+            Opcode::AXS => {
+               
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+
+                let src = self.a & arg;
+
+                let (result, is_carry) = self.a.overflowing_sub(src);
+
+                let is_zero     = result == 0;
+                let is_negative = (result & 0x80) == 0x80;
+
+                self.write_carry_flag(is_carry);
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+                self.x = result;
+                1 + cyc
+            },
+            Opcode::LAX => {
+                
+                let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
+
+                let is_zero     = arg == 0;
+                let is_negative = (arg & 0x80) == 0x80;
+
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+                self.a = arg;
+                self.x = arg;
+                1 + cyc
+            },
+            Opcode::SAX => {
+                
+                let (Operand(addr, cyc), _arg) = self.fetch_args(system, mode);
+
+                let result = self.a & self.x;
+
+                system.write_u8(addr, result, false);
+                1 + cyc
+            },
+            Opcode::DCP => {
+                
+                let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
+
+                
+                let dec_result = arg.wrapping_sub(1);
+                system.write_u8(addr, dec_result, false);
+
+                
+                let result = self.a.wrapping_sub(dec_result);
+
+                let is_carry    = self.a >= dec_result;
+                let is_zero     = result == 0;
+                let is_negative = (result & 0x80) == 0x80;
+
+                self.write_carry_flag(is_carry);
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+                3 + cyc
+            },
+            Opcode::ISC => {
+                
+                let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
+
+                
+                let inc_result = arg.wrapping_add(1);
+                system.write_u8(addr, inc_result, false);
+
+                
+                let (data1, is_carry1) = self.a.overflowing_sub(inc_result);
+                let (result, is_carry2) = data1.overflowing_sub(if self.read_carry_flag() { 0 } else { 1 } );
+
+                let is_carry    = !(is_carry1 || is_carry2); 
+                let is_zero     = result == 0;
+                let is_negative = (result & 0x80) == 0x80;
+                let is_overflow = (((self.a ^ inc_result) & 0x80) == 0x80) && (((self.a ^ result) & 0x80) == 0x80);
+
+                self.write_carry_flag(is_carry);
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+                self.write_overflow_flag(is_overflow);
+                self.a = result;
+                1 + cyc
+            },
+            Opcode::RLA => {
+                
+                let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
+
+               
+                let result_rol = arg.wrapping_shl(1) | (if self.read_carry_flag() { 0x01 } else { 0x00 } );
+
+                let is_carry    = (arg & 0x80) == 0x80;
+                self.write_carry_flag(is_carry);
+
+                system.write_u8(addr, result_rol, false);
+
+                
+                let result_and = self.a & result_rol;
+
+                let is_zero     = result_and == 0;
+                let is_negative = (result_and & 0x80) == 0x80;
+
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+
+                self.a = result_and;
+
+                3 + cyc
+            },
+            Opcode::RRA => {
+                
+                let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
+
+                
+                let result_ror = arg.wrapping_shr(1) | (if self.read_carry_flag() { 0x80 } else { 0x00 } );
+
+                let is_carry_ror    = (arg & 0x01) == 0x01;
+                self.write_carry_flag(is_carry_ror);
+
+                system.write_u8(addr, result_ror, false);
+
+                
+                let tmp = u16::from(self.a) + u16::from(result_ror) + (if self.read_carry_flag() { 1 } else { 0 } );
+                let result_adc = (tmp & 0xff) as u8;
+
+                let is_carry    = tmp > 0x00ffu16;
+                let is_zero     = result_adc == 0;
+                let is_negative = (result_adc & 0x80) == 0x80;
+                let is_overflow = ((self.a ^ result_adc) & (result_ror ^ result_adc) & 0x80) == 0x80;
+
+                self.write_carry_flag(is_carry);
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+                self.write_overflow_flag(is_overflow);
+                self.a = result_adc;
+
+                3 + cyc
+            },
+            Opcode::SLO => {
+                
+                let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
+
+                
+                let result_asl = arg.wrapping_shl(1);
+
+                let is_carry    = (arg & 0x80) == 0x80; 
+                self.write_carry_flag(is_carry);
+
+                system.write_u8(addr, result_asl, false);
+
+                
+                let result_ora = self.a | result_asl;
+
+                let is_zero     = result_ora == 0;
+                let is_negative = (result_ora & 0x80) == 0x80;
+
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+                self.a = result_ora;
+
+                3 + cyc
+            },
+            Opcode::SRE => {
+                
+                let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
+
+                
+                let result_lsr = arg.wrapping_shr(1);
+
+                let is_carry    = (arg & 0x01) == 0x01;
+                self.write_carry_flag(is_carry);
+
+                system.write_u8(addr, result_lsr, false);
+
+               
+                let result_eor = self.a ^ result_lsr;
+
+                let is_zero     = result_eor == 0;
+                let is_negative = (result_eor & 0x80) == 0x80;
+
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
+                self.a = result_eor;
+
+                3 + cyc
+            },
+            Opcode::SKB => {
+                
+               
+                let (Operand(_addr, cyc), _arg) = self.fetch_args(system, mode);
+
+                1 + cyc
+            },
+            Opcode::IGN => {
+               
+                let (Operand(_addr, cyc), _arg) = self.fetch_args(system, mode);
+
+                1 + cyc
+            },
             Opcode::NOP =>{
                 2
             },
