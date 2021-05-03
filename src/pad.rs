@@ -28,7 +28,7 @@ impl Pad {
     }
 }
 
-impl EmulateControl for Pad {
+impl Pad {
     fn reset(&mut self) {
         self.button_reg = 0;
         self.read_shift_index = 0;
