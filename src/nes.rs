@@ -9,6 +9,7 @@ pub mod system;
 pub mod rom;
 pub mod cpu;
 pub mod instruction;
+pub mod pad;
 use crate::cpu::Cpu;
 use crate::system::System;
 

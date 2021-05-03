@@ -104,6 +104,7 @@ impl System {
             self.ppu_reg[PPU_STATUS_OFFSET] = self.ppu_reg[PPU_STATUS_OFFSET] | 0x80u8;
         }else{
             self.ppu_reg[PPU_STATUS_OFFSET] = self.ppu_reg[PPU_STATUS_OFFSET] & (!0x80u8);
+            
         }
     }
     pub fn read_u8(&mut self, addr: u16, des : bool) -> u8{
