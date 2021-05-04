@@ -12,6 +12,7 @@ pub mod instruction;
 pub mod pad;
 use crate::cpu::Cpu;
 use crate::system::System;
+use crate::pad::Pad;
 
 #[derive(Debug, Clone)]
 pub struct Display{

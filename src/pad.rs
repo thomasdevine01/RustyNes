@@ -12,14 +12,14 @@ pub enum PadButton {
     Right,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Pad {
     pub button_reg: u8,
     pub read_shift_index: u8,
     pub strobe_enable: bool,
 }
 impl Pad {
-    fn default() -> Self {
+    pub fn default() -> Self {
         Self {
             button_reg: 0,
             read_shift_index: 0,
@@ -29,7 +29,7 @@ impl Pad {
 }
 
 impl Pad {
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.button_reg = 0;
         self.read_shift_index = 0;
         self.strobe_enable = false;

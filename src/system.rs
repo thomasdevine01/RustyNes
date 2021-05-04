@@ -33,6 +33,7 @@ pub const PPU_DATA_OFFSET: usize = 0x07;
 pub const APU_IO_OAM_DMA_OFFSET: usize = 0x14;
 
 use super::rom::*;
+use super::pad::*;
 #[derive(Clone, Debug)]
 pub struct System {
     //Memory for each component
@@ -40,6 +41,10 @@ pub struct System {
     pub ppu_reg: [u8; 0x0008],
     pub io_reg: [u8; 0x0018],
     pub rom : Rom,
+
+    //Pads
+    pub pad1: Pad,
+    pub pad2: Pad,
     //Read/Write flags for each component
     
     pub write_oam_data: bool,
@@ -57,7 +62,6 @@ pub struct System {
 
 
 }
-
 impl System{
    pub fn default() -> Self {
         Self{
@@ -65,6 +69,8 @@ impl System{
             ppu_reg:[0;0x0008],
             io_reg:[0;0x0018],
             rom: Rom::default(),
+            pad1: Pad::default(),
+            pad2: Pad::default(),
             write_oam_data: false,
             write_ppu_scroll:false,
             write_ppu_addr:false,
@@ -143,8 +149,8 @@ impl System {
             let index = usize::from(addr - APU_IO_REG_BASE_ADDR);
             if !des {
                 match index {
-                  //  0x16 => self.pad1.read_out(),
-                  //  0x17 => self.pad2.read_out(),
+                    0x16 => self.pad1.read_out(),
+                    0x17 => self.pad2.read_out(),
                     _ => self.io_reg[index],
                 }
             } else {
@@ -217,14 +223,208 @@ impl System {
             if !des {
                 match index {
                     0x14 => self.write_oam_data = true,
-                   // 0x16 => self.pad1.write_strobe((data & 0x01) == 0x01),
-                   // 0x16 => self.pad2.write_strobe((data & 0x01) == 0x01),
+                    0x16 => self.pad1.write_strobe((data & 0x01) == 0x01),
+                    0x16 => self.pad2.write_strobe((data & 0x01) == 0x01),
                     _ => {}
                 }
             }
             self.io_reg[index] = data;
         } else {
             self.rom.write_u8(addr, data, des);
+        }
+    }
+}
+
+//PPU registers
+impl System {
+
+    pub fn read_ppu_nmi_enable(&self) -> bool {
+        (self.ppu_reg[PPU_CTRL_OFFSET] & 0x80u8) == 0x80u8
+    }
+
+    pub fn read_ppu_is_master(&self) -> bool {
+        (self.ppu_reg[PPU_CTRL_OFFSET] & 0x40u8) == 0x40u8
+    }
+
+    pub fn read_ppu_sprite_height(&self) -> u8 {
+        if (self.ppu_reg[PPU_CTRL_OFFSET] & 0x20u8) == 0x20u8 {
+            16
+        } else {
+            8
+        }
+    }
+    pub fn read_ppu_bg_pattern_table_addr(&self) -> u16 {
+        if (self.ppu_reg[PPU_CTRL_OFFSET] & 0x10u8) == 0x10u8 {
+            0x1000u16
+        } else {
+            0x0000u16
+        }
+    }
+    pub fn read_ppu_sprite_pattern_table_addr(&self) -> u16 {
+        if (self.ppu_reg[PPU_CTRL_OFFSET] & 0x08u8) == 0x08u8 {
+            0x1000u16
+        } else {
+            0x0000u16
+        }
+    }
+
+    pub fn read_ppu_addr_increment(&self) -> u8 {
+        if (self.ppu_reg[PPU_CTRL_OFFSET] & 0x04u8) == 0x04u8 {
+            32u8
+        } else {
+            1u8
+        }
+    }
+    pub fn read_ppu_name_table_base_addr(&self) -> u16 {
+        match self.ppu_reg[PPU_CTRL_OFFSET] & 0x03u8 {
+            0 => 0x2000,
+            1 => 0x2400,
+            2 => 0x2800,
+            3 => 0x2c00,
+            _ => panic!("invalid name table addr index"),
+        }
+    }
+
+    pub fn read_ppu_is_write_sprite(&self) -> bool {
+        (self.ppu_reg[PPU_MASK_OFFSET] & 0x10u8) == 0x10u8
+    }
+
+    pub fn read_ppu_is_write_bg(&self) -> bool {
+        (self.ppu_reg[PPU_MASK_OFFSET] & 0x08u8) == 0x08u8
+    }
+
+    pub fn read_ppu_is_clip_sprite_leftend(&self) -> bool {
+        (self.ppu_reg[PPU_MASK_OFFSET] & 0x04u8) != 0x04u8
+    }
+
+    pub fn read_ppu_is_clip_bg_leftend(&self) -> bool {
+        (self.ppu_reg[PPU_MASK_OFFSET] & 0x02u8) != 0x02u8
+    }
+    pub fn read_is_monochrome(&self) -> bool {
+        (self.ppu_reg[PPU_MASK_OFFSET] & 0x01u8) == 0x01u8
+    }
+
+    pub fn read_ppu_is_vblank(&self) -> bool {
+        (self.ppu_reg[PPU_STATUS_OFFSET] & 0x80u8) == 0x80u8
+    }
+
+    pub fn write_ppu_is_vblank(&mut self, is_set: bool) {
+        if is_set {
+            self.ppu_reg[PPU_STATUS_OFFSET] = self.ppu_reg[PPU_STATUS_OFFSET] | 0x80u8;
+        } else {
+            self.ppu_reg[PPU_STATUS_OFFSET] = self.ppu_reg[PPU_STATUS_OFFSET] & (!0x80u8);
+        }
+    }
+
+    pub fn read_ppu_is_hit_sprite0(&self) -> bool {
+        (self.ppu_reg[PPU_STATUS_OFFSET] & 0x40u8) == 0x40u8
+    }
+    pub fn write_ppu_is_hit_sprite0(&mut self, is_set: bool) {
+        if is_set {
+            self.ppu_reg[PPU_STATUS_OFFSET] = self.ppu_reg[PPU_STATUS_OFFSET] | 0x40u8;
+        } else {
+            self.ppu_reg[PPU_STATUS_OFFSET] = self.ppu_reg[PPU_STATUS_OFFSET] & (!0x40u8);
+        }
+    }
+
+    pub fn read_ppu_is_sprite_overflow(&self) -> bool {
+        (self.ppu_reg[PPU_STATUS_OFFSET] & 0x20u8) == 0x20u8
+    }
+    pub fn write_ppu_is_sprite_overflow(&mut self, is_set: bool) {
+        if is_set {
+            self.ppu_reg[PPU_STATUS_OFFSET] = self.ppu_reg[PPU_STATUS_OFFSET] | 0x20u8;
+        } else {
+            self.ppu_reg[PPU_STATUS_OFFSET] = self.ppu_reg[PPU_STATUS_OFFSET] & (!0x20u8);
+        }
+    }
+
+    pub fn clear_ppu_status(&mut self) {
+        self.ppu_reg[PPU_STATUS_OFFSET] = 0x00u8;
+    }
+
+    pub fn read_ppu_oam_addr(&self) -> u8 {
+        self.ppu_reg[PPU_OAMADDR_OFFSET]
+    }
+
+    pub fn read_oam_data(&mut self) -> (bool, bool, u8) {
+
+        if self.write_oam_data {
+            self.write_oam_data = false;
+            (false, true, self.ppu_reg[PPU_OAMDATA_OFFSET])
+        } else if self.read_oam_data {
+            self.read_oam_data = false;
+            (true, false, self.ppu_reg[PPU_OAMDATA_OFFSET])
+        } else {
+            (false, false, self.ppu_reg[PPU_OAMDATA_OFFSET])
+        }
+    }
+
+    pub fn write_oam_data(&mut self, data: u8) {
+        self.ppu_reg[PPU_OAMDATA_OFFSET] = data;
+    }
+
+
+    pub fn read_ppu_scroll(&mut self) -> (bool, u8, u8) {
+        if self.write_ppu_scroll {
+            self.write_ppu_scroll = false;
+            (true, self.ppu_reg[PPU_SCROLL_OFFSET], self.ppu_scroll_y)
+        } else {
+            (
+                false,
+                self.ppu_reg[PPU_SCROLL_OFFSET],
+                self.ppu_scroll_y,
+            )
+        }
+    }
+
+    pub fn read_ppu_addr(&mut self) -> (bool, u16) {
+        let addr =
+            (u16::from(self.ppu_reg[PPU_ADDR_OFFSET]) << 8) | u16::from(self.ppu_addr_lower);
+        if self.write_ppu_addr {
+            self.write_ppu_addr = false;
+            (true, addr)
+        } else {
+            (false, addr)
+        }
+    }
+
+    pub fn read_ppu_data(&mut self) -> (bool, bool, u8) {
+
+        if self.write_ppu_data {
+            self.write_ppu_data = false;
+            (false, true, self.ppu_reg[PPU_DATA_OFFSET])
+        } else if self.read_ppu_data {
+            self.read_ppu_data = false;
+            (true, false, self.ppu_reg[PPU_DATA_OFFSET])
+        } else {
+            (false, false, self.ppu_reg[PPU_DATA_OFFSET])
+        }
+    }
+
+  
+    pub fn write_ppu_data(&mut self, data: u8) {
+        self.ppu_reg[PPU_DATA_OFFSET] = data;
+    }
+
+ 
+    pub fn increment_ppu_addr(&mut self) {
+        let current_addr =
+            (u16::from(self.ppu_reg[PPU_ADDR_OFFSET]) << 8) | u16::from(self.ppu_addr_lower);
+      
+        let add_val = u16::from(self.read_ppu_addr_increment());
+        let dst_addr = current_addr.wrapping_add(add_val);
+   
+        self.ppu_addr_lower = (dst_addr & 0xff) as u8;
+        self.ppu_reg[PPU_ADDR_OFFSET] = (dst_addr >> 8) as u8;
+    }
+ 
+    pub fn read_oam_dma(&mut self) -> (bool, u16) {
+        let start_addr = u16::from(self.io_reg[APU_IO_OAM_DMA_OFFSET]) << 8;
+        if self.write_oam_dma {
+            self.write_oam_dma = false;
+            (true, start_addr)
+        } else {
+            (false, start_addr)
         }
     }
 }
