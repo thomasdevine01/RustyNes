@@ -19,7 +19,7 @@ pub enum Mapper{
     Unknown,
     Nrom,
 }
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum MirrorTable{
     Unknown,
     Horizontal,
@@ -154,5 +154,17 @@ impl Rom{
             }
         }
     }
+    
+    pub fn read_video_u8(&mut self, addr: u16) -> u8 {
+            let index = usize::from(addr);
+            debug_assert!(index < CHR_ROM_MAX_SIZE);
+            self.c_rom[index]
+        }
+       
+    pub fn write_video_u8(&mut self, addr: u16, data: u8) {
+            let index = usize::from(addr);
+            debug_assert!(index < CHR_ROM_MAX_SIZE);
+            self.c_rom[index] = data;
+        }
 
 }
