@@ -166,5 +166,16 @@ impl Rom{
             debug_assert!(index < CHR_ROM_MAX_SIZE);
             self.c_rom[index] = data;
         }
+      
+    pub fn reset(&mut self) {
+            self.mapper = Mapper::Unknown;
+            self.mirror_table = MirrorTable::Unknown;
+            self.bat_pack = false;
+            self.p_rom_bytes = 0;
+            self.c_rom_bytes = 0;
+            self.p_rom = [0; PRG_ROM_MAX_SIZE];
+            self.c_rom = [0; CHR_ROM_MAX_SIZE];
+            self.b_pack = [0; BATTERY_PACKED_RAM_MAX_SIZE];
+        }
 
 }
