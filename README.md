@@ -4,7 +4,7 @@ Rust/WASM NES Emulator using HTML5 Canvas
 
 ## To build
 * install [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
-* Just run `build.sh`
+* Run `build.sh`
 
 
 ## Sources
