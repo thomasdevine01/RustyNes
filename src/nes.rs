@@ -18,25 +18,19 @@ use crate::pad::*;
 
 #[wasm_bindgen]
 extern "C" {
-    // Use `js_namespace` here to bind `console.log(..)` instead of just
-    // `log(..)`
+
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
 
-    // The `console.log` is quite polymorphic, so we can bind it with multiple
-    // signatures. Note that we need to use `js_name` to ensure we always call
-    // `log` in JS.
+
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_u32(a: u32);
 
-    // Multiple arguments too!
     #[wasm_bindgen(js_namespace = console, js_name = log)]
     fn log_many(a: &str, b: &str);
 }
 
 macro_rules! console_log {
-    // Note that this is using the `log` function imported above during
-    // `bare_bones`
     ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
 }
 
@@ -122,10 +116,7 @@ impl WasmEmulator {
 
     pub fn load(&mut self, binary: &[u8]) -> bool {
       console_log!("WasmEmulator::load()");
-        let success = self
-            .cpu_sys
-            .rom
-            .load_bin(|addr: usize| binary[addr]);
+        let success = self.cpu_sys.rom.load_bin(|addr: usize| binary[addr]);
         if success {
             self.reset();
         }
@@ -136,15 +127,11 @@ impl WasmEmulator {
        
         let mut total_cycle: usize = 0;
         while total_cycle < CYCLE_PER_DRAW_FRAME {
-            // for debug
-            // console_log!("a:{:02X} x:{:02X} y:{:02X} pc:{:04X} sp:{:02X} p:{:02X} ", self.cpu.a, self.cpu.x, self.cpu.y, self.cpu.pc, self.cpu.s, self.cpu.p);
-
             let cpu_cycle = usize::from(self.cpu.step(&mut self.cpu_sys));
             if let Some(interrupt) = self.ppu.step(cpu_cycle, &mut self.cpu_sys, &mut self.fb) {
                 self.cpu.interrupt(&mut self.cpu_sys, interrupt);
             }
             total_cycle = total_cycle + cpu_cycle;
-           
         }
     }
   

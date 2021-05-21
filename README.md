@@ -9,7 +9,7 @@ Rust/WASM NES Emulator using HTML5 Canvas
 * run `npm install`
 * run `npm run build`
 * run `npm run serve`
-* open browser to `127.0.0.1:4444`
+* open browser to `127.0.0.1:4444` this can be changed in webpack.config.js
 
 
 ## Sources
