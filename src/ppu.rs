@@ -1,6 +1,4 @@
-
-/* BEWARE ALL YE WHO ENTER HERE, YOU'LL NEED THIS */
-/* https://wiki.nesdev.com/w/index.php/PPU_programmer_reference */
+//This is far more commented than other sections because I feel it is more fascinating and hard to grasp, at least it was for me
 
 use super::cpu::*;
 use super::system::*;
@@ -56,7 +54,7 @@ pub struct Position(pub u8, pub u8);
 #[derive(Copy, Clone, Eq, PartialEq)]
 pub struct Color(pub u8, pub u8, pub u8);
 impl Color {
-
+    //Build color from palette table
     pub fn from(src: u8) -> Color {
         let index = src & 0x3f;
         let table: [Color; 0x40] = include!("ppu_palette.rs");
@@ -67,7 +65,7 @@ impl Color {
     }
 }
 
-
+//Maps tiles from memory
 #[derive(Copy, Clone)]
 pub enum TileId {
 
@@ -83,9 +81,11 @@ pub enum TileId {
     },
 }
 impl TileId {
+    //Two categories of tiles, normal and large
     pub fn normal(src: u8) -> TileId {
         TileId::Normal { id: src }
     }
+    //Large needs to be build from the pattern table
     pub fn large(src: u8) -> TileId {
         TileId::Large {
             pattern_table_addr: (if (src & 0x01) == 0x01 {
@@ -98,7 +98,7 @@ impl TileId {
         }
     }
 }
-
+//Attributes for sprites
 #[derive(Copy, Clone)]
 pub struct SpriteAttr {
 
@@ -110,6 +110,7 @@ pub struct SpriteAttr {
 
     palette_id: u8,
 }
+//Attributes encoded in flags
 impl SpriteAttr {
     pub fn from(src: u8) -> SpriteAttr {
         SpriteAttr {
@@ -120,7 +121,8 @@ impl SpriteAttr {
         }
     }
 }
-
+//Our sprite structure, kind of looks like a modern sprite structure with x and y coords, a tile (bitmap analogously) and some attributes
+//Though in this case the attributes are about whether the sprite is flipped and its colors
 #[derive(Copy, Clone)]
 pub struct Sprite {
 
@@ -134,7 +136,8 @@ pub struct Sprite {
 }
 
 impl Sprite {
-
+//A sprite is built from 4 bytes, in different ways depending on whether it is a large or small sprite
+//Bytes 0 and 3 are the position of the sprite, bytes 1 and 2 are the tile and colors of the sprite, as well as other attributes
     pub fn from(is_large: bool, byte0: u8, byte1: u8, byte2: u8, byte3: u8) -> Sprite {
         Sprite {
             y: byte0,
@@ -148,7 +151,9 @@ impl Sprite {
         }
     }
 }
-
+//The PPU has 4 ways of looking at lines, as it scans down the screen. This amounts to 4 rendering phases at the hardware level
+//The line names are fairly self-explanatory except vblank, which is the period an old TV took to scan back to the top, blank the screen, and
+//begin drawing again
 #[derive(Copy, Clone)]
 enum LineStatus {
     Visible,                // 0~239
@@ -156,7 +161,7 @@ enum LineStatus {
     VerticalBlanking(bool), // 241~260
     PreRender,              // 261
 }
-
+//This just tells us which status the line is in
 impl LineStatus {
     fn from(line: u16) -> LineStatus {
         if line < 240 {
@@ -172,30 +177,32 @@ impl LineStatus {
         }
     }
 }
-
+//The big one
 #[derive(Clone)]
 pub struct Ppu {
-    
+    //Object attribute memory, this is where we get the list of sprites put in the structure above
+    //each sprite is 4 bytes, and it can contain 64 of them
     pub oam: [u8; OAM_SIZE],
-   
+    //This is another OAM that holds a max of 8 sprites for the current scanline
+    //This means there are limits to the amount of sprites you can have along a single line
     pub sprite_temps: [Option<Sprite>; SPRITE_TEMP_SIZE],
 
-   
+    //Basically the PPUs way of syncing
     pub cumulative_cpu_cyc: usize,
-    
+    //Line variable, kind of a hack around tv scanlines determining this
     pub current_line: u16,
 
-   
+    //fine scroll position
     pub fetch_scroll_x: u8,
     pub fetch_scroll_y: u8,
     pub current_scroll_x: u8,
     pub current_scroll_y: u8,
 
-
+    //The OAM high address in physical hardware, used to suspend the CPU during transfer
     pub is_dma_running: bool,
-   
+    //DMA from cpu to PPU, source address
     pub dma_cpu_src_addr: u16,
-
+    //destination in PPU memory
     pub dma_oam_dst_addr: u8,
 }
 
@@ -240,7 +247,7 @@ impl Ppu {
 }
 
 impl Ppu {
-
+    //Do a memory access on the CPU/To the CPU
     fn run_dma(&mut self, system: &mut System, is_pre_transfer: bool) {
         debug_assert!(
             (!self.is_dma_running && is_pre_transfer) || (self.is_dma_running && !is_pre_transfer)
@@ -252,15 +259,18 @@ impl Ppu {
         } else {
             OAM_DMA_COPY_SIZE_PER_PPU_STEP
         };
+        //Each step adds a certain amount to the address
         let cpu_start_addr: u16 = self.dma_cpu_src_addr.wrapping_add(u16::from(start_offset));
+        //Each step also must be added to the PPU address
         let oam_start_addr: u8 = self.dma_oam_dst_addr.wrapping_add(start_offset);
-
+        //In the pre transfer we know the transfer size
         let transfer_size: u16 = if is_pre_transfer {
             OAM_DMA_COPY_SIZE_PER_PPU_STEP as u16
         } else {
+            //Otherwise we decrement
             (OAM_SIZE as u16) - u16::from(OAM_DMA_COPY_SIZE_PER_PPU_STEP)
         };
-
+        //Move the data, fairly self-explanatory
         for offset in 0..transfer_size {
             let cpu_addr = cpu_start_addr.wrapping_add(offset);
             let oam_addr = usize::from(oam_start_addr.wrapping_add(offset as u8));
@@ -269,26 +279,33 @@ impl Ppu {
             self.oam[oam_addr] = cpu_data;
         }
 
-
+        //Return to pre-transfer
         self.is_dma_running = is_pre_transfer;
     }
-
+    //Put a line on the fb (frame buffer). Fun fact: this frame buffer is directly used way up in the browser to draw on the canvas
     fn draw_line(
         &mut self,
         system: &mut System,
         fb: &mut [[[u8; NUM_OF_COLOR]; VISIBLE_SCREEN_WIDTH]; VISIBLE_SCREEN_HEIGHT],
     ) {
-        
+        //This is where the very clever part (read: difficult) part of the PPU starts
+        //https://wiki.nesdev.com/w/index.php/PPU_nametables
+        //The PPU nametable is specifically used to lay out backgrounds
         let nametable_base_addr = system.read_ppu_name_table_base_addr();
+        //The pattern table defines background and sprite shapes.
         let pattern_table_addr = system.read_ppu_bg_pattern_table_addr();
+        //Are we clipping off the screen
         let is_clip_bg_leftend = system.read_ppu_is_clip_bg_leftend();
+        //Are we writing to the background
         let is_write_bg = system.read_ppu_is_write_bg();
+        //self-explanatory
         let is_monochrome = system.read_is_monochrome();
+        //We find the "master color" for the palette
         let master_bg_color = Color::from(system.video.read_u8(
             &mut system.rom,
             PALETTE_TABLE_BASE_ADDR + PALETTE_BG_OFFSET,
         ));
-
+        //Fairly standard x/y math coordinate math, but you know, old
         let raw_y = self.current_line + u16::from(self.current_scroll_y);
         let offset_y = raw_y & 0x07; 
         let tile_base_y = raw_y >> 3; 
@@ -300,12 +317,13 @@ impl Ppu {
 
        
         let pixel_y = usize::from(self.current_line);
+        //We need to go across for every scanline
         for pixel_x in 0..VISIBLE_SCREEN_WIDTH {
             
             let (sprite_palette_data_back, sprite_palette_data_front) =
                 self.get_sprite_draw_data(system, pixel_x, pixel_y);
 
-            
+            //Same as above but going horizontally
             let offset_x = ((pixel_x as u16) + u16::from(self.current_scroll_x)) & 0x07;
             let tile_base_x = ((pixel_x as u16) + u16::from(self.current_scroll_x)) >> 3;
            
@@ -313,7 +331,7 @@ impl Ppu {
             let tile_local_x = tile_global_x % SCREEN_TILE_WIDTH;
             let is_nametable_position_left = tile_global_x < SCREEN_TILE_WIDTH; 
 
-            
+            //Move around with how the nametables are laid out
             let target_nametable_base_addr = nametable_base_addr +
                 (if is_nametable_position_left { 0x0000 } else { 0x0400 }) + 
                 (if is_nametable_position_top  { 0x0000 } else { 0x0800 }); 
@@ -324,7 +342,7 @@ impl Ppu {
             let attribute_addr =
                 attribute_base_addr + (attribute_y_offset << 3) + attribute_x_offset;
 
-      
+            
             let raw_attribute = system.video.read_u8(&mut system.rom, attribute_addr);
             let bg_palette_id = match (tile_local_x & 0x03 < 0x2, tile_local_y & 0x03 < 0x2) {
                 (true, true) => (raw_attribute >> 0) & 0x03,  // top left
@@ -333,29 +351,33 @@ impl Ppu {
                 (false, false) => (raw_attribute >> 6) & 0x03, // bottom right
             };
 
-  
+            //Nametable as mentioned above, this is how we map into it given a tile
             let nametable_addr = target_nametable_base_addr + (tile_local_y << 5) + tile_local_x;
+            //We get the background tile from the nametable address, as mentioned, the nametable defines the background
             let bg_tile_id = u16::from(system.video.read_u8(&mut system.rom, nametable_addr));
-
+            //The background is built from the lower and upper bytes of the background pattern table
             let bg_pattern_table_base_addr = pattern_table_addr + (bg_tile_id << 4);
             let bg_pattern_table_addr_lower = bg_pattern_table_base_addr + offset_y;
             let bg_pattern_table_addr_upper = bg_pattern_table_addr_lower + 8;
+            //We grab the background data from video memory with this calculated pattern table address
             let bg_data_lower = system
                 .video
                 .read_u8(&mut system.rom, bg_pattern_table_addr_lower);
             let bg_data_upper = system
                 .video
                 .read_u8(&mut system.rom, bg_pattern_table_addr_upper);
-
+            //We take the background data and map it onto the palette
             let bg_palette_offset = (((bg_data_upper >> (7 - offset_x)) & 0x01) << 1)
                 | ((bg_data_lower >> (7 - offset_x)) & 0x01);
             let bg_palette_addr = (PALETTE_TABLE_BASE_ADDR + PALETTE_BG_OFFSET) +   
                 (u16::from(bg_palette_id) << 2) + 
                 u16::from(bg_palette_offset);
 
-           
+            //We check if something is clipping off the left side of the screen
+            //Notice how we always only care about the left side? Ever wonder why you can't go backwards in the original Mario?
             let is_bg_clipping = is_clip_bg_leftend && (pixel_x < 8);
             let is_bg_tranparent = (bg_palette_addr & 0x03) == 0x00; 
+            //Read palette from the rom
             let bg_palette_data: Option<u8> = if is_bg_clipping || !is_write_bg || is_bg_tranparent
             {
                 None
@@ -366,7 +388,7 @@ impl Ppu {
          
             let mut draw_color = master_bg_color;
 
-           
+             //Grab the actual color from the palette
             'select_color: for palette_data in &[
                 sprite_palette_data_front,
                 bg_palette_data,
@@ -379,7 +401,7 @@ impl Ppu {
                     break 'select_color;
                 }
             }
-       
+            //Load up the frame buffer to be shipped back up to the browser
             fb[pixel_y][pixel_x][0] = draw_color.0;
             fb[pixel_y][pixel_x][1] = draw_color.1;
             fb[pixel_y][pixel_x][2] = draw_color.2;
@@ -396,38 +418,40 @@ impl Ppu {
             }
         }
     }
-
+    //Does what it says on the tin
     fn get_sprite_draw_data(
         &mut self,
         system: &mut System,
         pixel_x: usize,
         pixel_y: usize,
     ) -> (Option<u8>, Option<u8>) {
-   
+        //If the ppu isn't doing anything with sprites, we don't need to do anything
         if !system.read_ppu_is_write_sprite() {
             return (None, None);
         }
      
         let mut sprite_palette_data_back: Option<u8> = None; 
         let mut sprite_palette_data_front: Option<u8> = None; 
+        //Sometimes Rust can feel like python, a little
+        //This moves across the scanline sprite template thingy to get the sprites in the scanline 
         'draw_sprite: for &s in self.sprite_temps.iter() {
             if let Some(sprite) = s {
-
+                //If we get a sprite, we can do stuff
                 let sprite_x = usize::from(sprite.x);
                 let sprite_y = usize::from(sprite.y);
-               
+                //Like check for clipping pixels (with the left, (i.e the void))
                 let is_sprite_clipping = system.read_ppu_is_clip_sprite_leftend() && (pixel_x < 8);
-                
+                //If it's not clipping and we are currently inside it
                 if !is_sprite_clipping
                     && (sprite_x <= pixel_x)
                     && (pixel_x < usize::from(sprite_x + SPRITE_WIDTH))
                 {
-                   
+                    //Figure out where the sprite is on the screen
                     let sprite_offset_x: usize = pixel_x - sprite_x; 
                     let sprite_offset_y: usize = pixel_y - sprite_y - 1; 
                     debug_assert!(sprite_offset_x < SPRITE_WIDTH);
                     debug_assert!(sprite_offset_y < usize::from(system.read_ppu_sprite_height()));
-                   
+                    //Draw it based in attributes and the pattern table
                     let (sprite_pattern_table_addr, sprite_tile_id): (u16, u8) = match sprite
                         .tile_id
                     {
@@ -449,7 +473,7 @@ impl Ppu {
                             (pattern_table_addr, id)
                         }
                     };
-                    
+                    //Do the math for the flippings
                     let tile_offset_x: usize = if !sprite.attr.is_hor_flip {
                         sprite_offset_x
                     } else {
@@ -460,7 +484,7 @@ impl Ppu {
                     } else {
                         SPRITE_NORMAL_HEIGHT - 1 - (sprite_offset_y % SPRITE_NORMAL_HEIGHT)
                     };
-               
+                    //Get the sprite out of the pattern table, similar to how we treated tiles up above
                     let sprite_pattern_table_base_addr = u16::from(sprite_pattern_table_addr)
                         + (u16::from(sprite_tile_id) * PATTERN_TABLE_ENTRY_BYTE);
                     let sprite_pattern_table_addr_lower =
@@ -505,7 +529,7 @@ impl Ppu {
     }
 
 
- 
+    //Get a sprite from memory, very similar to the tile fetch above
     fn fetch_sprite(&mut self, system: &mut System) {
     
         if !system.read_ppu_is_write_sprite() {
@@ -551,7 +575,7 @@ impl Ppu {
         }
     }
 
-
+    //Does what it says
     fn update_line(
         &mut self,
         system: &mut System,
@@ -560,11 +584,12 @@ impl Ppu {
       
         self.current_scroll_x = self.fetch_scroll_x;
         self.current_scroll_y = self.fetch_scroll_y;
- 
+        //Do a memory transfer if that's happening
         if self.is_dma_running {
           
             self.run_dma(system, false);
         }
+        //start a memory transfer if it needs to start
         let (is_dma_req, dma_cpu_src_addr) = system.read_oam_dma();
         if is_dma_req {
            
@@ -572,11 +597,11 @@ impl Ppu {
             self.dma_oam_dst_addr = system.read_ppu_oam_addr();
             self.run_dma(system, true);
         }
-       
+        
         system.write_ppu_is_hit_sprite0(false);
         system.write_ppu_is_sprite_overflow(false);
 
-     
+        //Get the line status, act accordingly
         match LineStatus::from(self.current_line) {
             LineStatus::Visible => {
               
@@ -613,14 +638,14 @@ impl Ppu {
             }
         }
     }
-
+ //This is basically the equivalent of a step in the CPU, except totally different in what it does
     pub fn step(
         &mut self,
         cpu_cyc: usize,
         system: &mut System,
         fb: &mut [[[u8; NUM_OF_COLOR]; VISIBLE_SCREEN_WIDTH]; VISIBLE_SCREEN_HEIGHT],
     ) -> Option<Interrupt> {
-       
+        //Do the scrolling
         let (_, scroll_x, scroll_y) = system.read_ppu_scroll();
         self.fetch_scroll_x = scroll_x;
         self.fetch_scroll_y = scroll_y;
@@ -628,20 +653,21 @@ impl Ppu {
        
         let (_, ppu_addr) = system.read_ppu_addr();
         let (is_read_ppu_req, is_write_ppu_req, ppu_data) = system.read_ppu_data();
-
+        //Write if we need to write, and increment the ppu address on the bus
         if is_write_ppu_req {
             system
                 .video
                 .write_u8(&mut system.rom, ppu_addr, ppu_data);
             system.increment_ppu_addr();
         }
+        //Read if we need to read, and increment the ppu address on the bus
         if is_read_ppu_req {
             let data = system.video.read_u8(&mut system.rom, ppu_addr);
             system.write_ppu_data(data);
             system.increment_ppu_addr();
         }
 
-        
+        //Read that sprite memory, if we need to
         let oam_addr = system.read_ppu_oam_addr();
         let (is_read_oam_req, is_write_oam_req, oam_data) = system.read_oam_data();
         if is_write_oam_req {
@@ -652,7 +678,7 @@ impl Ppu {
             system.write_oam_data(data);
         }
 
-        
+        //Sync back up to the CPU, update lines until in sync
         let total_cyc = self.cumulative_cpu_cyc + cpu_cyc;
         if total_cyc >= CPU_CYCLE_PER_LINE {
             self.cumulative_cpu_cyc = total_cyc - CPU_CYCLE_PER_LINE;

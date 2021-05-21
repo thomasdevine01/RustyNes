@@ -67,6 +67,8 @@ use crate::video::VideoSystem;
 
 use super::rom::*;
 use super::pad::*;
+
+//This is how we're doing our bus, a big struct that holds all relevant info
 #[derive(Clone, Debug)]
 pub struct System {
     //Memory for each component
@@ -150,7 +152,8 @@ impl System {
             
         }
     }
-
+    //Read 8 bytes from the correct location based on a bunch of 
+    //base addresses
     pub fn read_u8(&mut self, addr: u16, is_nondestructive: bool) -> u8 {
         if addr < PPU_REG_BASE_ADDR {
      
@@ -284,6 +287,8 @@ impl System {
 }
 
 //PPU registers
+//This is all explained in the ppu.r file. It's mostly a bunch of internally consistent opaque rules which
+//Are largely uninteresting beyond how they are described in that source file.
 impl System {
 
     pub fn read_ppu_nmi_enable(&self) -> bool {

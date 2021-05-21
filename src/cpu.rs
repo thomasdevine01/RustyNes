@@ -119,7 +119,7 @@ impl Cpu{
 
 
 
-
+//Write flags, do the logic on them according to various spreadsheets
 
 impl Cpu {
 
@@ -203,15 +203,18 @@ impl Cpu {
     pub fn read_carry_flag(&self) -> bool {
         (self.p & 0x01u8) == 0x01u8
     }
-
+    //Write to the stack register
     pub fn stack_push(&mut self, system: &mut System, data: u8){
         system.write_u8(self.s, data, false);
         self.s = self.s - 1;
     }
+    //Pop from stack register
     pub fn stack_pop(&mut self, system: &mut System) -> u8 {
         self.s = self.s + 1;
         system.read_u8(self.s, false)
     }
+    //The 6502 has 4 interrupts, NMI, RESET, IRQ, and FLAG
+    //They are pretty self-explanatory
     pub fn interrupt(&mut self, system: &mut System, irq : Interrupt){
         let is_nested = self.read_interrupt_flag();
         if is_nested && (irq == Interrupt::IRQ) || (irq == Interrupt::BRK) {
@@ -266,30 +269,43 @@ impl Cpu {
         self.pc = (lower_d as u16) | ((upper_d as u16) << 8);
 
     }
+    //Fetch 8 bytes from the bus, quite important this one
     fn fetch8(&mut self, sys: &mut System) -> u8{
         let data = sys.read_u8(self.pc, false);
         self.pc = self.pc + 1;
         data
     }
+    //Fetch 16 bytes from the bus, not nearly as important
     fn fetch16(&mut self, sys: &mut System) ->u16{
         let lower = self.fetch8(sys);
         let upper = self.fetch8(sys);
         let data = u16::from(lower) | (u16::from(upper) << 8);
         data
     }
+    //Decouple operands using addressing modes from instructions
+    //Reducing the work needed to be done by me by many fold
+    //We have 13 addressing modes, most of them are self-explanatory
     fn fetch_operand(&mut self, system: &mut System, mode: AddressingMode) -> Operand {
         match mode {
+            //Means we already know where the data is
             AddressingMode::Implied => Operand(0, 0),
+            //Use the acc register
             AddressingMode::Accumulator => Operand(0, 1),
+            //Use the argument to jump
             AddressingMode::Immediate => Operand(u16::from(self.fetch8(system)), 1),
+            //Use the argument to directly go to the address, as long as its less than 16 bytes worth of addresses away
             AddressingMode::Absolute => Operand(self.fetch16(system), 3),
+            // Go from the first page of memory
             AddressingMode::ZeroPage => Operand(u16::from(self.fetch8(system)), 2),
+            //Go from the zero page by the x register
             AddressingMode::ZeroPageX => {
                 Operand(u16::from(self.fetch8(system).wrapping_add(self.x)), 3)
             }
+            //Go from the zero page by the Y register
             AddressingMode::ZeroPageY => {
                 Operand(u16::from(self.fetch8(system).wrapping_add(self.y)), 3)
             }
+            //Same as absolute above but added to X reg
             AddressingMode::AbsoluteX => {
                 let data = self.fetch16(system).wrapping_add(u16::from(self.x));
                 let additional_cyc =
@@ -300,6 +316,7 @@ impl Cpu {
                     };
                 Operand(data, 3 + additional_cyc)
             }
+            //...You can guess
             AddressingMode::AbsoluteY => {
                 let data = self.fetch16(system).wrapping_add(u16::from(self.y));
                 let additional_cyc =
@@ -310,6 +327,7 @@ impl Cpu {
                     };
                 Operand(data, 3 + additional_cyc)
             }
+            //Move relative to the current PC, this is used by branches mostly
             AddressingMode::Relative => {
                 let src_addr = self.fetch8(system);
                 let signed_data = ((src_addr as i8) as i32) + (self.pc as i32); 
@@ -325,6 +343,7 @@ impl Cpu {
 
                 Operand(data, 1 + additional_cyc)
             }
+            //Jump to the address pointed to by a 16 bit address in memories (yes, the 6502 has pointers)
             AddressingMode::Indirect => {
                 let src_addr_lower = self.fetch8(system);
                 let src_addr_upper = self.fetch8(system);
@@ -370,7 +389,7 @@ impl Cpu {
             }
         }
     }
-
+    //Get the arguments for an operation based on addressing mode
     fn fetch_args(&mut self, system: &mut System, mode: AddressingMode) ->(Operand, u8){
         match mode{
             AddressingMode::Implied =>(self.fetch_operand(system, mode), 0),
@@ -388,6 +407,8 @@ impl Cpu {
         }
     
     }
+    //The meat of the CPU, this function is an OO abomination but without costly abstraction, this is really the easiest way
+    //I do not have time to explain every operation here. Or any of them. Look them up. It's neat.
     pub fn step(&mut self, system : &mut System) -> u8{
         let inst_pc = self.pc;
         let inst_code = self.fetch8(system);

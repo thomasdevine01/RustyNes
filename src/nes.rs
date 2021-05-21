@@ -94,17 +94,17 @@ impl WasmEmulator {
       console_log!("WasmEmulator::new()");
         WasmEmulator::default()
     }
-   
+    //Grab the fb pointer to pass it up to the browser
     pub fn get_fb_ptr(&self) -> *const [[u8; NUM_OF_COLOR]; VISIBLE_SCREEN_WIDTH] {
       console_log!("WasmEmulator::get_fb_ptr()");
         self.fb.as_ptr()
     }
- 
+    //self-explanatory
     pub fn get_fb_size(&self) -> usize {
       console_log!("WasmEmulator::get_fb_size()");
         NUM_OF_COLOR * VISIBLE_SCREEN_WIDTH * VISIBLE_SCREEN_HEIGHT
     }
-
+    //Have to be able to reset, need that button for authenticity
     pub fn reset(&mut self) {
      console_log!("WasmEmulator::reset()");
         self.fb = [[[0; NUM_OF_COLOR]; VISIBLE_SCREEN_WIDTH]; VISIBLE_SCREEN_HEIGHT];
@@ -113,7 +113,7 @@ impl WasmEmulator {
         self.ppu.reset();
         self.cpu.interrupt(&mut self.cpu_sys, Interrupt::RESET);
     }
-
+    //Load a binary using a bin reader from js, surprisingly simple. This is the rom load
     pub fn load(&mut self, binary: &[u8]) -> bool {
       console_log!("WasmEmulator::load()");
         let success = self.cpu_sys.rom.load_bin(|addr: usize| binary[addr]);
@@ -122,7 +122,7 @@ impl WasmEmulator {
         }
         success
     }
-
+    //Clock tick, called in a loop in js
     pub fn step_line(&mut self) {
        
         let mut total_cycle: usize = 0;
@@ -134,7 +134,7 @@ impl WasmEmulator {
             total_cycle = total_cycle + cpu_cycle;
         }
     }
-  
+    //Need to hook the buttons on the keeb up to the back end
     pub fn update_key(&mut self, key: KeyEvent) {
         match key {
             KeyEvent::PressA => self.cpu_sys.pad1.push_button(PadButton::A),

@@ -1,7 +1,7 @@
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
-
+//Asynchronously connect to the WASM
 async function main() {
     const { memory } = await import(
       "/pkg/nes_bg.wasm"
@@ -19,7 +19,9 @@ async function main() {
     emu.reset();
     const rustBuf = new Uint8Array(memory.buffer);
     const fbBasePtr = emu.get_fb_ptr();
-
+      //Do some drawing, I have not figured out how to make this faster, there might be a way but I am not 
+      //Familiar enough with canvas to get there.
+      //This takes the fb from waaaay down in the PPU and draws it :D
     function draw() {
       const canvas = document.getElementById("fb");
       const ctx = canvas.getContext("2d");
