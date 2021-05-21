@@ -6,6 +6,7 @@ Rust/WASM NES Emulator using HTML5 Canvas
 * install [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
 * install `nodejs/npm`
 * run `wasm-pack build --release`
+* run `npm install`
 * run `npm run build`
 * run `npm run serve`
 * open browser to `127.0.0.1:4444`
