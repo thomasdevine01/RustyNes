@@ -1,7 +1,7 @@
 
 
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
@@ -115,7 +115,7 @@ pub struct Instruction(pub Opcode, pub AddressingMode);
 
 impl Instruction {
     pub fn from(code : u8) -> Instruction {
-        log(&code.to_string());
+        //log(&code.to_string());
         match code {
 
             //BINARY OPERATIONS
@@ -241,14 +241,14 @@ impl Instruction {
             //LDX
             0xa2=> Instruction(Opcode::LDX, AddressingMode::Immediate),
             0xa6=> Instruction(Opcode::LDX, AddressingMode::ZeroPage),
-            0xb6=> Instruction(Opcode::LDX, AddressingMode::ZeroPageX),
+            0xb6=> Instruction(Opcode::LDX, AddressingMode::ZeroPageY),
             0xae=> Instruction(Opcode::LDX, AddressingMode::Absolute),
             0xbe=> Instruction(Opcode::LDX, AddressingMode::AbsoluteY),
 
             //LDY
             0xa0 => Instruction(Opcode::LDY, AddressingMode::Immediate),
             0xa4 => Instruction(Opcode::LDY, AddressingMode::ZeroPage),
-            0xb4 => Instruction(Opcode::LDY, AddressingMode::ZeroPageY),
+            0xb4 => Instruction(Opcode::LDY, AddressingMode::ZeroPageX),
             0xac => Instruction(Opcode::LDY, AddressingMode::Absolute),
             0xbc => Instruction(Opcode::LDY, AddressingMode::AbsoluteX),
 
@@ -263,13 +263,13 @@ impl Instruction {
 
             //STX
             0x86 => Instruction(Opcode::STX, AddressingMode::ZeroPage),
-            0x86 => Instruction(Opcode::STX, AddressingMode::ZeroPageY),
-            0x86 => Instruction(Opcode::STX, AddressingMode::Absolute),
+            0x96 => Instruction(Opcode::STX, AddressingMode::ZeroPageY),
+            0x8e => Instruction(Opcode::STX, AddressingMode::Absolute),
 
             //STY
             0x84 => Instruction(Opcode::STY, AddressingMode::ZeroPage),
-            0x84 => Instruction(Opcode::STY, AddressingMode::ZeroPageX),
-            0x84 => Instruction(Opcode::STY, AddressingMode::Absolute),
+            0x94 => Instruction(Opcode::STY, AddressingMode::ZeroPageX),
+            0x8c => Instruction(Opcode::STY, AddressingMode::Absolute),
 
             //Flag set/clear
             0x38 => Instruction(Opcode::SEC, AddressingMode::Implied),
@@ -443,8 +443,8 @@ impl Instruction {
             0xf4 => Instruction(Opcode::IGN, AddressingMode::ZeroPageX),
 
             _ =>  {
-                log("Unimplemented opcode:");
-                log(&code.to_string());
+                //log("Unimplemented opcode:");
+                //log(&code.to_string());
                 Instruction(Opcode::NOP, AddressingMode::Implied)
             },
         }

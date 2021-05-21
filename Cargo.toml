@@ -1,29 +1,29 @@
 [package]
-name = nes-rust-wasm
-version = 0.1.0
-authors = [Stephen Anderson]
-edition = 2018
+name = "nes-rust-wasm"
+version = "0.1.0"
+authors = ["Stephen Anderson"]
+edition = "2018"
 
 [lib]
-name=nes
-path = .srcnes.rs
-crate-type = [cdylib, rlib]
+name="nes"
+path = "./src/nes.rs"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-wasm-bindgen = 0.2.70
-js-sys = 0.3.47
-hex = 0.4.2
+wasm-bindgen = "0.2.70"
+js-sys = "0.3.47"
+hex = "0.4.2"
 
 [dependencies.web-sys]
-version = 0.3.4
+version = "0.3.4"
 features = [
-  Window,
+  "Window",
   'Event',
-  console,
-  Document,
-  Element,
-  HtmlElement,
-  Node,
+  "console",
+  "Document",
+  "Element",
+  "HtmlElement",
+  "Node",
   'CanvasRenderingContext2d',
   'HtmlCanvasElement',
   'FocusEvent',
@@ -31,5 +31,4 @@ features = [
   'EventListener',
   'EventTarget',
   'UiEvent'
-  
 ]

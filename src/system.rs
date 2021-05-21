@@ -1,10 +1,41 @@
 
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
+}
+#[cfg(feature = "unsafe-opt")]
+#[allow(unused_macros)]
+macro_rules! arr_read {
+    ($arr:expr, $index:expr) => {
+        unsafe { *$arr.get_unchecked($index) }
+    };
+}
+
+#[cfg(feature = "unsafe-opt")]
+#[allow(unused_macros)]
+macro_rules! arr_write {
+    ($arr:expr, $index:expr, $data:expr) => {
+        unsafe { *$arr.get_unchecked_mut($index) = $data }
+    };
+}
+
+#[cfg(not(feature = "unsafe-opt"))]
+#[allow(unused_macros)]
+macro_rules! arr_read {
+    ($arr:expr, $index:expr) => {
+        $arr[$index]
+    };
+}
+
+#[cfg(not(feature = "unsafe-opt"))]
+#[allow(unused_macros)]
+macro_rules! arr_write {
+    ($arr:expr, $index:expr, $data:expr) => {
+        $arr[$index] = $data
+    };
 }
 /*
 This is essentially the bus, and will become the core of the emulator, as it transmits data between each component
@@ -32,16 +63,18 @@ pub const PPU_ADDR_OFFSET: usize = 0x06;
 pub const PPU_DATA_OFFSET: usize = 0x07;
 pub const APU_IO_OAM_DMA_OFFSET: usize = 0x14;
 
+use crate::video::VideoSystem;
+
 use super::rom::*;
 use super::pad::*;
 #[derive(Clone, Debug)]
 pub struct System {
     //Memory for each component
-    pub wram : [u8; 0x0800],
-    pub ppu_reg: [u8; 0x0008],
-    pub io_reg: [u8; 0x0018],
+    pub wram : [u8; WRAM_SIZE],
+    pub ppu_reg: [u8; PPU_REG_SIZE],
+    pub io_reg: [u8; APU_IO_REG_SIZE],
     pub rom : Rom,
-
+    pub video: VideoSystem,
     //Pads
     pub pad1: Pad,
     pub pad2: Pad,
@@ -65,12 +98,13 @@ pub struct System {
 impl System{
    pub fn default() -> Self {
         Self{
-            wram:[0; 0x0800],
-            ppu_reg:[0;0x0008],
-            io_reg:[0;0x0018],
+            wram:[0; WRAM_SIZE],
+            ppu_reg:[0;PPU_REG_SIZE],
+            io_reg:[0;APU_IO_REG_SIZE],
             rom: Rom::default(),
             pad1: Pad::default(),
             pad2: Pad::default(),
+            video: VideoSystem::default(),
             write_oam_data: false,
             write_ppu_scroll:false,
             write_ppu_addr:false,
@@ -89,6 +123,9 @@ impl System{
 impl System {
 
     pub fn reset(&mut self){
+        self.video.reset();
+        self.pad1.reset();
+        self.pad2.reset();
         self.wram = [0; WRAM_SIZE];
         self.ppu_reg = [0; PPU_REG_SIZE];
         self.io_reg = [0; APU_IO_REG_SIZE];
@@ -113,124 +150,135 @@ impl System {
             
         }
     }
-    pub fn read_u8(&mut self, addr: u16, des : bool) -> u8{
-        if addr < PPU_REG_BASE_ADDR { //This is the PPU register base address
-            let index = usize::from(addr) % self.wram.len(); //Mirroring support
-        //    log("reading opcode:");
-         //  log(&self.wram[index].to_string());
-            return self.wram[index];
-        }else if addr < APU_IO_REG_BASE_ADDR {
+
+    pub fn read_u8(&mut self, addr: u16, is_nondestructive: bool) -> u8 {
+        if addr < PPU_REG_BASE_ADDR {
+     
+            let index = usize::from(addr) % self.wram.len();
+            arr_read!(self.wram, index)
+        } else if addr < APU_IO_REG_BASE_ADDR {
+      
             let index = usize::from(addr - PPU_REG_BASE_ADDR) % self.ppu_reg.len();
+            debug_assert!(index < 0x9);
             match index {
+             
                 0x02 => {
-                    let data = self.ppu_reg[index];
-                    if !des {
+                    let data = self.ppu_reg[index]; 
+                    if !is_nondestructive {
                         self.ppu_is_second = false;
-                        self.write_ppu_vblank(false);
+                        self.write_ppu_is_vblank(false);
                     }
                     data
-                },
+                }
+    
                 0x04 => {
-                    if !des {
-                        self.read_oam_data = true
+                    if !is_nondestructive {
+                        self.read_oam_data = true;
                     }
-                    self.ppu_reg[index]
-                },
+                    arr_read!(self.ppu_reg, index)
+                }
+  
                 0x07 => {
-                    if !des {
-                        self.read_ppu_data = true
+                    if !is_nondestructive {
+                        self.read_ppu_data = true;
                     }
-                    self.ppu_reg[index]
-
-                },
-                _=> self.ppu_reg[index],
+                    arr_read!(self.ppu_reg, index)
+                }
+        
+                _ => arr_read!(self.ppu_reg, index),
             }
         } else if addr < ROM_BASE_ADDR {
             let index = usize::from(addr - APU_IO_REG_BASE_ADDR);
-            if !des {
+            if !is_nondestructive {
                 match index {
-                    0x16 => self.pad1.read_out(),
-                    0x17 => self.pad2.read_out(),
-                    _ => self.io_reg[index],
+                    
+                    0x16 => self.pad1.read_out(), // pad1
+                    0x17 => self.pad2.read_out(), // pad2
+                    _ => arr_read!(self.io_reg, index),
                 }
             } else {
-            self.io_reg[index]
+                arr_read!(self.io_reg, index)
             }
+        } else {
+            self.rom.read_u8(addr, is_nondestructive)
         }
-        else {
-            self.rom.read_u8(addr, des)
-         }
     }
 
-    pub fn write_u8(&mut self, addr: u16, data: u8, des : bool){
-        if addr  > 0x6000 {
-            log ("WROTE FROM 6000");
-        }
+    pub fn write_u8(&mut self, addr: u16, data: u8, is_nondestructive: bool) {
         if addr < PPU_REG_BASE_ADDR {
+            // mirror support
             let index = usize::from(addr) % self.wram.len();
-            self.wram[index] = data;
+            arr_write!(self.wram, index, data);
         } else if addr < APU_IO_REG_BASE_ADDR {
+            // mirror support
             let index = usize::from(addr - PPU_REG_BASE_ADDR) % self.ppu_reg.len();
-
             match index {
+            
                 0x04 => {
-                    if !des {
+                    if !is_nondestructive {
                         self.write_oam_data = true
                     }
-                    self.ppu_reg[index] = data;
-
-                },
+                    arr_write!(self.ppu_reg, index, data);
+                }
+              
                 0x05 => {
                     if self.ppu_is_second {
                         self.ppu_scroll_y = data;
-                        if !des {
-                            self.ppu_is_second  = false;
+                        if !is_nondestructive {
+                            self.ppu_is_second = false;
+                     
                             self.write_ppu_scroll = true;
                         }
-                    }else {
-                        self.ppu_reg[index] = data;
-                        if !des {
+                    } else {
+                        arr_write!(self.ppu_reg, index, data);
+                        if !is_nondestructive {
                             self.ppu_is_second = true;
                         }
                     }
-                },
+                }
+      
                 0x06 => {
                     if self.ppu_is_second {
                         self.ppu_addr_lower = data;
-                        if !des {
+                        if !is_nondestructive {
                             self.ppu_is_second = false;
+                        
                             self.write_ppu_addr = true;
                         }
                     } else {
-                        self.ppu_reg[index] = data;
-                        if !des{
-                            self.ppu_is_second = true
+                        arr_write!(self.ppu_reg, index, data);
+                        if !is_nondestructive {
+                            self.ppu_is_second = true;
                         }
                     }
-                },
+                }
+     
                 0x07 => {
-                    self.ppu_reg[index] = data;
-                    if !des {
+                    arr_write!(self.ppu_reg, index, data);
+                    if !is_nondestructive {
+            
                         self.write_ppu_data = true;
                     }
-                },
+                }
+        
                 _ => {
-                    self.ppu_reg[index] = data;
+                    arr_write!(self.ppu_reg, index, data);
                 }
             };
         } else if addr < ROM_BASE_ADDR {
             let index = usize::from(addr - APU_IO_REG_BASE_ADDR);
-            if !des {
+            if !is_nondestructive {
                 match index {
-                    0x14 => self.write_oam_data = true,
-                    0x16 => self.pad1.write_strobe((data & 0x01) == 0x01),
-                    0x16 => self.pad2.write_strobe((data & 0x01) == 0x01),
+                
+                    0x14 => self.write_oam_dma = true, 
+                    0x16 => self.pad1.write_strobe((data & 0x01) == 0x01), 
+                    0x17 => self.pad2.write_strobe((data & 0x01) == 0x01), 
                     _ => {}
                 }
             }
-            self.io_reg[index] = data;
+            arr_write!(self.io_reg, index, data);
         } else {
-            self.rom.write_u8(addr, data, des);
+            self.rom.write_u8(addr, data, is_nondestructive);
         }
     }
 }

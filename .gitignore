@@ -13,3 +13,6 @@ Cargo.lock
 # More stuff, related directly to program
 *.wasm
 *.nes
+
+/node_modules/
+/dist/

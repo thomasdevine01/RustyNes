@@ -16,8 +16,38 @@ pub const PALETTE_SIZE: usize = 0x20;
 pub const PALETTE_ENTRY_SIZE: u16 = 0x04;
 pub const PALETTE_BG_OFFSET: u16 = 0x00;
 pub const PALETTE_SPRITE_OFFSET: u16 = 0x10;
+#[cfg(feature = "unsafe-opt")]
+#[allow(unused_macros)]
+macro_rules! arr_read {
+    ($arr:expr, $index:expr) => {
+        unsafe { *$arr.get_unchecked($index) }
+    };
+}
 
-#[derive(Clone)]
+#[cfg(feature = "unsafe-opt")]
+#[allow(unused_macros)]
+macro_rules! arr_write {
+    ($arr:expr, $index:expr, $data:expr) => {
+        unsafe { *$arr.get_unchecked_mut($index) = $data }
+    };
+}
+
+#[cfg(not(feature = "unsafe-opt"))]
+#[allow(unused_macros)]
+macro_rules! arr_read {
+    ($arr:expr, $index:expr) => {
+        $arr[$index]
+    };
+}
+
+#[cfg(not(feature = "unsafe-opt"))]
+#[allow(unused_macros)]
+macro_rules! arr_write {
+    ($arr:expr, $index:expr, $data:expr) => {
+        $arr[$index] = $data
+    };
+}
+#[derive(Clone, Debug)]
 pub struct VideoSystem {
 
     pub nametables: [[u8; NAME_TABLE_SIZE]; NUM_OF_NAME_TABLE],
@@ -36,7 +66,7 @@ impl Default for VideoSystem {
 }
 
 impl VideoSystem {
-    fn reset(&mut self) {
+    pub fn reset(&mut self) {
         self.nametables = [[0; NAME_TABLE_SIZE]; NUM_OF_NAME_TABLE];
         self.palette = [0; PALETTE_SIZE];
     }
@@ -62,7 +92,7 @@ impl VideoSystem {
             MirrorTable::Vertical => {
                 // [A, B]
                 // [A, B]
-                let tmp_addr = if addr >= 0x2800 { addr - 0x800 } else { addr }; // とりあえず上の領域で考える
+                let tmp_addr = if addr >= 0x2800 { addr - 0x800 } else { addr }; 
                 if tmp_addr < 0x2400 {
                     0
                 } else {
@@ -104,7 +134,7 @@ impl VideoSystem {
                 0x14 => self.palette[0x04],
                 0x18 => self.palette[0x08],
                 0x1c => self.palette[0x0c],
-                _ => self.palette[index]
+                _ => arr_read!(self.palette, index),
             }
         }
     }
@@ -129,7 +159,7 @@ impl VideoSystem {
                 0x14 => self.palette[0x04] = data,
                 0x18 => self.palette[0x08] = data,
                 0x1c => self.palette[0x0c] = data,
-                _ => self.palette[index] = data,
+                _ => arr_write!(self.palette, index, data),
             };
         }
     }

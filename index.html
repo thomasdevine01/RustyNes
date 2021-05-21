@@ -1,48 +1,74 @@
 <!DOCTYPE html>
-<meta content="text/html;charset=utf-8" http-equiv="Content-Type">
-<meta content="utf-8" http-equiv="encoding">
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>RustyNes</title>
+    <meta name="description" content="NES Emulator written in Rust" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/element-ui/2.0.0/theme-chalk/index.css"
+    />
+    <link rel="stylesheet" href="https://unpkg.com/buefy/dist/buefy.min.css" />
+    <link
+      rel="stylesheet"
+      href="https://use.fontawesome.com/releases/v5.7.2/css/all.css"
+
+    />
+    <link rel="stylesheet" type="text/css" href="index.css" />
+
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/element-ui/2.0.0/index.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/element-ui/2.0.0/locale/ja.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <!-- Navbar -->
+      <el-button
+        id="toggle-navbar-button"
+        @click="navbarVisible = !navbarVisible"
+        type="info"
+        icon="el-icon-more"
+        size="mini"
+        circle
+      ></el-button>
+      <el-menu
+        v-if="navbarVisible"
+        mode="horizontal"
+        background-color="#515c14"
+        text-color="#fff"
+        active-text-color="#ffe04b"
+      >
+        <el-menu-item index="1"
+          ><a
+            href="https://github.com/Axanimander/RustyNes"
+            target="_blank"
+          >
+            <i class="fab fa-github fa-2x" aria-hidden="true"></i></a
+        ></el-menu-item>
+        <el-menu-item @click="loadRomVisible = true" index="3"
+          >Load</el-menu-item
+        >
+        <el-menu-item @click="reset" index="4">Reset</el-menu-item>
+        <el-menu-item @click="keyconfigVisible = true" index="5"
+          >KeyConfig</el-menu-item
+        >
+      </el-menu>
+
+      <!-- Dialog -->
+      <el-dialog title="Load ROM" :visible.sync="loadRomVisible">
+        <div>
+          <span>Use File API. Will not be uploaded</span>
+          <input type="file" id="rom-file" @change="romSelect" />
+        </div>
+      </el-dialog>
 
 
-<head>
-  <meta charset="utf-8">
-  <title>My Application</title>
-  <base href=".">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <i class="fas fa-chart-area"></i>
-  <link rel="icon" type="image/x-icon" href="favicon.ico">
-</head>
 
-<body>
-<div class='page'>
-  <span class='label'>ROM:</span>
-  <select id='roms'>
-  </select>
-  <button id='run'>Start</button>
-  <button id='step'>Step</button>
-  <div id="PC"></div>
-  <div class='romloader'>
-    <div>
-      Select a rom file: 
-      <input type="file" id="romload">
+      
+     
+      <canvas id="fb" width="256" height="240"></canvas>
     </div>
-    <pre id="fileDisplayArea"></pre>
-  </div>
-  <div class='container'>
-    <div class='memory'></div>
-    <div class='registers' id='pc'></div>
-    <div class='registers' id='sp'></div>
-    <div class='registers' id='x'></div>
-    <div class='registers' id='y'></div>
-    <div class='registers' id='a'></div>
-    <div class='registers' id='r2'></div>
-  </div>
-  <div class='screen'>
-    <canvas id='canvas' width='240' height='256'
-      style='transform: scale(4); transform-origin: top left'></canvas>
-  </div>
-
-
-</div>
-</body>
-
-<script src='./nes.js' type="module"></script>
+  </body>
+</html>

@@ -1,11 +1,43 @@
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+
+
+#[cfg(feature = "unsafe-opt")]
+#[allow(unused_macros)]
+macro_rules! arr_read {
+    ($arr:expr, $index:expr) => {
+        unsafe { *$arr.get_unchecked($index) }
+    };
+}
+
+#[cfg(feature = "unsafe-opt")]
+#[allow(unused_macros)]
+macro_rules! arr_write {
+    ($arr:expr, $index:expr, $data:expr) => {
+        unsafe { *$arr.get_unchecked_mut($index) = $data }
+    };
+}
+
+#[cfg(not(feature = "unsafe-opt"))]
+#[allow(unused_macros)]
+macro_rules! arr_read {
+    ($arr:expr, $index:expr) => {
+        $arr[$index]
+    };
+}
+
+#[cfg(not(feature = "unsafe-opt"))]
+#[allow(unused_macros)]
+macro_rules! arr_write {
+    ($arr:expr, $index:expr, $data:expr) => {
+        $arr[$index] = $data
+    };
+}
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
     fn log(s: &str);
 }
-use crate::system;
+
 
 use super::system::*;
 use super::instruction::*;
@@ -22,12 +54,12 @@ pub const BRK_READ_UPPER: u16 = 0xffff;
 #[derive(Debug, Clone)]
 pub struct Cpu{
     pub pc : u16, //2-byte program counter
-    x : u8,
-    y : u8, //X and Y are index registers
-    a  : u8, //Accumulator
-    s : u16, //Stack Pointer
-    p : u8, //Status Register
-    pub data : u8, //Last data read, for debug
+   pub x : u8,
+    pub y : u8, //X and Y are index registers
+    pub a  : u8, //Accumulator
+    pub s : u16, //Stack Pointer
+    pub p : u8, //Status Register
+
 }
 
 #[derive(PartialEq, Eq)]
@@ -68,7 +100,7 @@ impl Cpu{
  
     
 }
-//Where we eventually have all of our opcodes enumerated, this will be a fairly large enum
+
 
 
 impl Cpu{
@@ -80,7 +112,7 @@ impl Cpu{
             a : 0,
             s : 0,
             p : 0,
-            data : 0,
+
         }
     }
 }
@@ -91,66 +123,59 @@ impl Cpu{
 
 impl Cpu {
 
-    pub fn write_negative_flag(&mut self, active:bool){
-        if active{
+    pub fn write_negative_flag(&mut self, is_active: bool) {
+        if is_active {
             self.p = self.p | 0x80u8;
-        }else{
+        } else {
             self.p = self.p & (!0x80u8);
         }
     }
-
-    pub fn write_overflow_flag(&mut self, active:bool){
-        if active{
+    pub fn write_overflow_flag(&mut self, is_active: bool) {
+        if is_active {
             self.p = self.p | 0x40u8;
-        }else{
+        } else {
             self.p = self.p & (!0x40u8);
         }
     }
-
-    pub fn write_break_flag(&mut self, active:bool){
-        if active{
-            self.p = self.p | 0x10u8;
-        }else{
-            self.p = self.p & (!0x10u8);
-        }
-    }
-
-    pub fn write_reserved_flag(&mut self, active:bool){
-        if active{
+    pub fn write_reserved_flag(&mut self, is_active: bool) {
+        if is_active {
             self.p = self.p | 0x20u8;
-        }else{
+        } else {
             self.p = self.p & (!0x20u8);
         }
     }
-
-    pub fn write_decimal_flag(&mut self, active:bool){
-        if active{
+    pub fn write_break_flag(&mut self, is_active: bool) {
+        if is_active {
+            self.p = self.p | 0x10u8;
+        } else {
+            self.p = self.p & (!0x10u8);
+        }
+    }
+    pub fn write_decimal_flag(&mut self, is_active: bool) {
+        if is_active {
             self.p = self.p | 0x08u8;
-        }else{
+        } else {
             self.p = self.p & (!0x08u8);
         }
     }
-
-    pub fn write_interrupt_flag(&mut self, active:bool){
-        if active{
+    pub fn write_interrupt_flag(&mut self, is_active: bool) {
+        if is_active {
             self.p = self.p | 0x04u8;
-        }else{
+        } else {
             self.p = self.p & (!0x04u8);
         }
     }
-    
-    pub fn write_zero_flag(&mut self, active:bool){
-        if active{
+    pub fn write_zero_flag(&mut self, is_active: bool) {
+        if is_active {
             self.p = self.p | 0x02u8;
-        }else{
+        } else {
             self.p = self.p & (!0x02u8);
         }
     }
-
-    pub fn write_carry_flag(&mut self, active:bool){
-        if active{
+    pub fn write_carry_flag(&mut self, is_active: bool) {
+        if is_active {
             self.p = self.p | 0x01u8;
-        }else{
+        } else {
             self.p = self.p & (!0x01u8);
         }
     }
@@ -169,14 +194,14 @@ impl Cpu {
     pub fn read_decimal_flag(&self) -> bool {
         (self.p & 0x08u8) == 0x08u8
     }
+    pub fn read_interrupt_flag(&self) -> bool {
+        (self.p & 0x04u8) == 0x04u8
+    }
     pub fn read_zero_flag(&self) -> bool {
         (self.p & 0x02u8) == 0x02u8
     }
-    pub fn read_carry_flag(&self) -> bool{
+    pub fn read_carry_flag(&self) -> bool {
         (self.p & 0x01u8) == 0x01u8
-    }
-    pub fn read_interrupt_flag(&self)->bool{
-        (self.p & 0x4u8) == 0x04u8
     }
 
     pub fn stack_push(&mut self, system: &mut System, data: u8){
@@ -189,7 +214,9 @@ impl Cpu {
     }
     pub fn interrupt(&mut self, system: &mut System, irq : Interrupt){
         let is_nested = self.read_interrupt_flag();
-
+        if is_nested && (irq == Interrupt::IRQ) || (irq == Interrupt::BRK) {
+            return;
+        }
         match irq{
             Interrupt::NMI =>{
             self.write_break_flag(false);
@@ -218,9 +245,7 @@ impl Cpu {
                 self.write_interrupt_flag(true);
 
             },
-            _ => {
-                log("Unhandled IRQ");
-            }
+
         }
 
         let lower = match irq{
@@ -252,72 +277,79 @@ impl Cpu {
         let data = u16::from(lower) | (u16::from(upper) << 8);
         data
     }
-    fn fetch_operand(&mut self, system:  &mut System, mode: AddressingMode) ->Operand{
-        match mode{
-            
+    fn fetch_operand(&mut self, system: &mut System, mode: AddressingMode) -> Operand {
+        match mode {
             AddressingMode::Implied => Operand(0, 0),
             AddressingMode::Accumulator => Operand(0, 1),
             AddressingMode::Immediate => Operand(u16::from(self.fetch8(system)), 1),
             AddressingMode::Absolute => Operand(self.fetch16(system), 3),
-            AddressingMode::ZeroPage => Operand(u16::from(self.fetch8(system)),2),
-            AddressingMode::ZeroPageX => Operand(u16::from(self.fetch8(system).wrapping_add(self.x)), 3),
-            AddressingMode::ZeroPageY => Operand(u16::from(self.fetch8(system).wrapping_add(self.y)), 3),
+            AddressingMode::ZeroPage => Operand(u16::from(self.fetch8(system)), 2),
+            AddressingMode::ZeroPageX => {
+                Operand(u16::from(self.fetch8(system).wrapping_add(self.x)), 3)
+            }
+            AddressingMode::ZeroPageY => {
+                Operand(u16::from(self.fetch8(system).wrapping_add(self.y)), 3)
+            }
             AddressingMode::AbsoluteX => {
                 let data = self.fetch16(system).wrapping_add(u16::from(self.x));
-                let add_cyc = if(data & 0xff00u16) != (data.wrapping_add(u16::from(self.x)) & 0xff00u16) {
-                    1
-                } else{
-                    0
-                };
-                Operand(data, 3 + add_cyc)
-            },
+                let additional_cyc =
+                    if (data & 0xff00u16) != (data.wrapping_add(u16::from(self.x)) & 0xff00u16) {
+                        1
+                    } else {
+                        0
+                    };
+                Operand(data, 3 + additional_cyc)
+            }
             AddressingMode::AbsoluteY => {
                 let data = self.fetch16(system).wrapping_add(u16::from(self.y));
-                let add_cyc = if(data & 0xff00u16) != (data.wrapping_add(u16::from(self.y)) & 0xff00u16) {
-                    1
-                } else{
-                    0
-                };
-                Operand(data, 3 + add_cyc)
-            },
-
+                let additional_cyc =
+                    if (data & 0xff00u16) != (data.wrapping_add(u16::from(self.y)) & 0xff00u16) {
+                        1
+                    } else {
+                        0
+                    };
+                Operand(data, 3 + additional_cyc)
+            }
             AddressingMode::Relative => {
                 let src_addr = self.fetch8(system);
-                let signed_d = ((src_addr as i8) as i32) + (self.pc as i32);
-                let data = signed_d as u16;
-                let add_cyc = if(data & 0xff00u16) != (self.pc & 0xff00u16){
+                let signed_data = ((src_addr as i8) as i32) + (self.pc as i32); 
+                debug_assert!(signed_data >= 0);
+                debug_assert!(signed_data < 0x10000);
+
+                let data = signed_data as u16;
+                let additional_cyc = if (data & 0xff00u16) != (self.pc & 0xff00u16) {
                     1
-                }else{
+                } else {
                     0
                 };
-                Operand(data, 1 + add_cyc)
-            },
 
+                Operand(data, 1 + additional_cyc)
+            }
             AddressingMode::Indirect => {
                 let src_addr_lower = self.fetch8(system);
                 let src_addr_upper = self.fetch8(system);
 
-                let dst_addr_lower = u16::from(src_addr_lower) | (u16::from(src_addr_upper) << 8);
-                let dst_addr_upper = u16::from(src_addr_lower.wrapping_add(1)) | (u16::from(src_addr_upper) << 8);
+                let dst_addr_lower = u16::from(src_addr_lower) | (u16::from(src_addr_upper) << 8); 
+                let dst_addr_upper =
+                    u16::from(src_addr_lower.wrapping_add(1)) | (u16::from(src_addr_upper) << 8); 
+
                 let dst_data_lower = u16::from(system.read_u8(dst_addr_lower, false));
                 let dst_data_upper = u16::from(system.read_u8(dst_addr_upper, false));
 
                 let data = dst_data_lower | (dst_data_upper << 8);
 
                 Operand(data, 5)
-            },
-
+            }
             AddressingMode::IndirectX => {
                 let src_addr = self.fetch8(system);
                 let dst_addr = src_addr.wrapping_add(self.x);
 
                 let data_lower = u16::from(system.read_u8(u16::from(dst_addr), false));
-                let data_upper = u16::from(system.read_u8(u16::from(dst_addr.wrapping_add(1)), false));
+                let data_upper =
+                    u16::from(system.read_u8(u16::from(dst_addr.wrapping_add(1)), false));
 
                 let data = data_lower | (data_upper << 8);
-
                 Operand(data, 5)
-                
             }
             AddressingMode::IndirectY => {
                 let src_addr = self.fetch8(system);
@@ -335,21 +367,17 @@ impl Cpu {
                 };
 
                 Operand(data, 4 + additional_cyc)
-                
             }
-
-            _ => {
-                log("unmatched operand: ");
-                Operand(0,0)}
-                ,
         }
     }
+
     fn fetch_args(&mut self, system: &mut System, mode: AddressingMode) ->(Operand, u8){
         match mode{
             AddressingMode::Implied =>(self.fetch_operand(system, mode), 0),
             AddressingMode::Accumulator => (self.fetch_operand(system, mode), self.a),
             AddressingMode::Immediate => {
                 let Operand(data, cyc) = self.fetch_operand(system, mode);
+                debug_assert!(data < 0x100u16);
                 (Operand(data, cyc), data as u8)
             }
             _ => {
@@ -363,12 +391,12 @@ impl Cpu {
     pub fn step(&mut self, system : &mut System) -> u8{
         let inst_pc = self.pc;
         let inst_code = self.fetch8(system);
-        self.data = inst_code;
+        
         let Instruction(opcode, mode) = Instruction::from(inst_code);
         
         match opcode{
             Opcode::ADC => {
-                log("ADC");
+             //   //log("ADC");
                 let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
 
                 let tmp = u16::from(self.a) + u16::from(arg) + (if self.read_carry_flag() { 1 } else { 0 } );
@@ -387,7 +415,7 @@ impl Cpu {
                 1 + cyc
             },
             Opcode::AND => {
-                log("AND");
+              //  //log("AND");
                 let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
 
                 let result = self.a & arg;
@@ -527,18 +555,19 @@ impl Cpu {
                 let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
 
                 let (result, _) = self.y.overflowing_sub(arg);
-                let zero_flag = result == 0;
-                let carry_flag = self.y >= arg;
-                let negative_flag = (result & 0x80) == 0x80;
 
-                self.write_carry_flag(carry_flag);
-                self.write_zero_flag(zero_flag);
-                self.write_negative_flag(negative_flag);
+                let is_carry    = self.y >= arg;
+                let is_zero     = result == 0;
+                let is_negative = (result & 0x80) == 0x80;
+
+                self.write_carry_flag(is_carry);
+                self.write_zero_flag(is_zero);
+                self.write_negative_flag(is_negative);
                 1 + cyc
-            },
+            }
             Opcode::DEC => {
                 let (Operand(addr, cyc), arg) = self.fetch_args(system, mode);
-                let result = self.x.wrapping_sub(1);
+                let result = arg.wrapping_sub(1);
                 let zero_flag = result == 0;
                 let negative_flag = (result & 0x80) == 0x80;
                 self.write_negative_flag(negative_flag);
@@ -565,7 +594,7 @@ impl Cpu {
                 2
             },
             Opcode::SBC => {
-                log("SBC");
+                
                 let (Operand(_, cyc), arg) = self.fetch_args(system, mode);
                 let (data, carry1) = self.a.overflowing_sub(arg);
                 let (result, carry2) = data.overflowing_sub(if self.read_carry_flag() {0} else {1});
@@ -592,7 +621,7 @@ impl Cpu {
 
                 self.write_zero_flag(zero_flag);
                 self.write_negative_flag(negative_flag);
-
+                self.a = result;
                 1 + cyc
             },
             Opcode::ORA => {
@@ -856,12 +885,12 @@ impl Cpu {
                 2
             },
             Opcode::TXA => {
-                let zero_flag = self.y == 0;
-                let negative_flag = (self.y & 0x80) == 0x80;
+                let zero_flag = self.x == 0;
+                let negative_flag = (self.x & 0x80) == 0x80;
 
                 self.write_negative_flag(negative_flag);
                 self.write_zero_flag(zero_flag);
-                self.a = self.y;
+                self.a = self.x;
                 2
             },
             Opcode::TXS =>{
@@ -878,7 +907,7 @@ impl Cpu {
                 2
             }
             Opcode::BRK =>{
-                log("BRK");
+               // //log("BRK");
                 self.write_break_flag(true);
                 self.interrupt(system, Interrupt::BRK);
                 7
@@ -1150,10 +1179,7 @@ impl Cpu {
             Opcode::NOP =>{
                 2
             },
-            _ =>{
-                log("Could not match opcode");
-                0
-            }
+
         }
     }
 }
