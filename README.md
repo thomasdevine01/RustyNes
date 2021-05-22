@@ -1,6 +1,11 @@
 # RustyNes
-Rust/WASM NES Emulator using HTML5 Canvas
+Rust/WASM NES Emulator using HTML5 Canvas. Only compatible with very simple ROMs.
 
+# Usage/Testing
+
+* The test used to make sure the CPU works is the [nestest] (https://wiki.nesdev.com/w/index.php/Emulator_tests) rom from kevtris.
+* Few if any other tests will work, as they are all more rigorous and use other mappers/are concerned with timing/etc
+* Few actual games will work. I recommend the original Super Mario game if one wishes to test something that works for sure (original DK works too)
 
 ## To build
 * install [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
