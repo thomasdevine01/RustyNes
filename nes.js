@@ -47,6 +47,7 @@ async function main() {
   
    
     function emulate_loop() {
+      //fun fact: performance.now() is a lot better to use in this context than messing with date stuff.
       const start = performance.now()
       if (isEmulateEnable) {
         emu.step_line();
@@ -136,16 +137,6 @@ async function main() {
         loadRomVisible: false,
         keyconfigVisible: false,
         gamepadVisible: false,
-        keyconfig: [
-          { key: "A", info: "Left" },
-          { key: "W", info: "Up" },
-          { key: "S", info: "Down" },
-          { key: "D", info: "Right" },
-          { key: "J", info: "A" },
-          { key: "K", info: "B" },
-          { key: "U", info: "Select" },
-          { key: "I", info: "Start" }
-        ]
       },
       methods: {
         romSelect(e) {

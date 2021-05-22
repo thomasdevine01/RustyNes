@@ -1,5 +1,9 @@
 
 
+
+//https://wiki.nesdev.com/w/index.php/Standard_controller
+//The controller for a NES is exceedingly simple (thankfully) in both concept and implementation. This should be entirely intuitive to read
+//With possibly the help of the linked page above
 #[derive(Copy, Clone)]
 pub enum PadButton {
     A,
