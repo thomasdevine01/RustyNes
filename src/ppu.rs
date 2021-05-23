@@ -342,7 +342,7 @@ impl Ppu {
             let attribute_addr =
                 attribute_base_addr + (attribute_y_offset << 3) + attribute_x_offset;
 
-            
+            //https://wiki.nesdev.com/w/index.php/PPU_OAM
             let raw_attribute = system.video.read_u8(&mut system.rom, attribute_addr);
             let bg_palette_id = match (tile_local_x & 0x03 < 0x2, tile_local_y & 0x03 < 0x2) {
                 (true, true) => (raw_attribute >> 0) & 0x03,  // top left
@@ -432,7 +432,7 @@ impl Ppu {
      
         let mut sprite_palette_data_back: Option<u8> = None; 
         let mut sprite_palette_data_front: Option<u8> = None; 
-        //Sometimes Rust can feel like python, a little
+        
         //This moves across the scanline sprite template thingy to get the sprites in the scanline 
         'draw_sprite: for &s in self.sprite_temps.iter() {
             if let Some(sprite) = s {

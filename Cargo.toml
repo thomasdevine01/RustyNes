@@ -1,5 +1,5 @@
 [package]
-name = "nes-rust-wasm"
+name = "rusty-nes"
 version = "0.1.0"
 authors = ["Stephen Anderson"]
 edition = "2018"
