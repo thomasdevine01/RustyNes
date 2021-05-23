@@ -335,7 +335,9 @@ impl Ppu {
             let target_nametable_base_addr = nametable_base_addr +
                 (if is_nametable_position_left { 0x0000 } else { 0x0400 }) + 
                 (if is_nametable_position_top  { 0x0000 } else { 0x0800 }); 
-
+            //https://wiki.nesdev.com/w/index.php/PPU_attribute_tables
+            //https://wiki.nesdev.com/w/index.php/PPU_scrolling#Tile_and_attribute_fetching
+            //The attribute table is a 64-byte array at the end of each nametable that controls which palette is assigned to each part of the background. 
             let attribute_base_addr = target_nametable_base_addr + ATTRIBUTE_TABLE_OFFSET; 
             let attribute_x_offset = (tile_global_x >> 2) & 0x7;
             let attribute_y_offset = tile_global_y >> 2;
@@ -356,6 +358,7 @@ impl Ppu {
             //We get the background tile from the nametable address, as mentioned, the nametable defines the background
             let bg_tile_id = u16::from(system.video.read_u8(&mut system.rom, nametable_addr));
             //The background is built from the lower and upper bytes of the background pattern table
+            //https://wiki.nesdev.com/w/index.php/PPU_pattern_tables
             let bg_pattern_table_base_addr = pattern_table_addr + (bg_tile_id << 4);
             let bg_pattern_table_addr_lower = bg_pattern_table_base_addr + offset_y;
             let bg_pattern_table_addr_upper = bg_pattern_table_addr_lower + 8;
