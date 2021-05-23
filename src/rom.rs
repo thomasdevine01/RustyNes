@@ -1,3 +1,4 @@
+/* Binary loading and handling */
 use wasm_bindgen::prelude::*;
 
 

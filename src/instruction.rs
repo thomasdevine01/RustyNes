@@ -1,4 +1,4 @@
-
+/* Instruction mapping, enums */
 
 use wasm_bindgen::prelude::*;
 
@@ -108,6 +108,7 @@ pub enum Opcode{
     SKB,
     IGN,
 }
+//u16 is address, u8 is cycles
 #[derive(Clone, Copy)]
 pub struct Operand(pub u16,  pub u8);
 #[derive(Clone, Copy, Debug)]
@@ -441,7 +442,7 @@ impl Instruction {
             0x74 => Instruction(Opcode::IGN, AddressingMode::ZeroPageX),
             0xd4 => Instruction(Opcode::IGN, AddressingMode::ZeroPageX),
             0xf4 => Instruction(Opcode::IGN, AddressingMode::ZeroPageX),
-
+            //This is not how you handle an unhandled opcode, you don't handle an unhandled opcode. This was an early workaround
             _ =>  {
                 //log("Unimplemented opcode:");
                 //log(&code.to_string());

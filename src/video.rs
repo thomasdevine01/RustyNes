@@ -1,3 +1,6 @@
+
+/* Implements the structure of video memory */
+
 use super::rom::*;
 
 

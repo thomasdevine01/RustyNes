@@ -1,3 +1,4 @@
+/* 6502 CPU implementation */
 use wasm_bindgen::prelude::*;
 
 

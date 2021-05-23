@@ -1,3 +1,4 @@
+/* The pixel processing unit, basically the GPU of the NES */
 //This is far more commented than other sections because I feel it is more fascinating and hard to grasp, at least it was for me
 
 use super::cpu::*;
@@ -57,6 +58,8 @@ impl Color {
     //Build color from palette table
     pub fn from(src: u8) -> Color {
         let index = src & 0x3f;
+        //https://wiki.nesdev.com/w/index.php/PPU_palettes
+        
         let table: [Color; 0x40] = include!("ppu_palette.rs");
         table[index as usize]
     }
