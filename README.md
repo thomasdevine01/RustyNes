@@ -8,7 +8,8 @@ Rust/WASM NES Emulator using HTML5 Canvas. Only compatible with very simple ROMs
 * Few actual games will work. I recommend the original Super Mario game if one wishes to test something that works for sure (original DK works too)
 
 ## To build
-* install [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/)
+* Make sure you have Rust
+* install [wasm-pack](https://rustwasm.github.io/wasm-pack/installer/) you can use cargo `cargo install wasm-pack`
 * install `nodejs/npm`
 * run `wasm-pack build --release`
 * run `npm install`
