@@ -134,7 +134,7 @@ impl WasmEmulator {
             total_cycle = total_cycle + cpu_cycle;
         }
     }
-    //Need to hook the buttons on the keeb up to the back end
+    //Need to hook the buttons on the keyboard up to the back end
     pub fn update_key(&mut self, key: KeyEvent) {
         match key {
             KeyEvent::PressA => self.cpu_sys.pad1.push_button(PadButton::A),
